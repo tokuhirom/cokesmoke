@@ -130,7 +130,20 @@ export class TouchInput {
       skillBar.appendChild(btn);
     }
 
+    const descendBtn = document.createElement("button");
+    descendBtn.id = "descend-btn";
+    descendBtn.className = "descend-btn";
+    descendBtn.textContent = "階段>";
+    descendBtn.disabled = true;
+    descendBtn.addEventListener("click", () => {
+      if (this.game.state !== "playing") return;
+      this.game.player.descend();
+      this.game.render();
+    });
+    skillBar.appendChild(descendBtn);
+
     const waitBtn = document.createElement("button");
+    waitBtn.className = "wait-btn";
     waitBtn.textContent = "待機";
     waitBtn.addEventListener("click", () => {
       if (this.game.state !== "playing") return;
@@ -154,6 +167,13 @@ export class TouchInput {
         btn.textContent = `[${i + 1}]---`;
         btn.disabled = true;
       }
+    }
+
+    // Update descend button
+    const descendBtn = document.getElementById("descend-btn") as HTMLButtonElement;
+    if (descendBtn) {
+      const tile = this.game.dungeon.getTile(p.x, p.y);
+      descendBtn.disabled = !(tile && tile.char === ">");
     }
   }
 }

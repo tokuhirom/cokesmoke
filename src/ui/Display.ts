@@ -101,10 +101,13 @@ export class Display {
 
     const hpBar = this.makeBar(p.hp, p.maxHp, "\u2588", "\u2591");
     const spBar = this.makeBar(p.sp, p.maxSp, "=", "-");
+    const armorStr = p.armorTurns > 0 ? ' <span style="color:#44ff88">[装甲]</span>' : "";
 
     el.innerHTML =
-      `HP:${hpBar} ${p.hp}/${p.maxHp}  燃料:${p.fuel}  ${game.currentFloor}F<br>` +
-      `SP:[${spBar}] ${p.sp}/${p.maxSp}`;
+      `<span class="hp-color">HP:${hpBar} ${p.hp}/${p.maxHp}</span>  ` +
+      `<span class="fuel-color">燃料:${p.fuel}</span>  ` +
+      `<span class="floor-color">${game.currentFloor}F</span>${armorStr}<br>` +
+      `<span class="sp-color">SP:[${spBar}] ${p.sp}/${p.maxSp}</span>`;
   }
 
   private makeBar(current: number, max: number, fillChar: string, emptyChar: string): string {
