@@ -1,7 +1,7 @@
 import * as ROT from "rot-js";
 import type { Scene } from "./Scene";
 import type { Game } from "../Game";
-import { MAP_WIDTH, MAP_HEIGHT, COLOR_PLAYER } from "../../constants";
+import { MAP_WIDTH, MAP_HEIGHT, COLOR_PLAYER, HUNGER_COST_PER_TURN } from "../../constants";
 
 export interface PointOfInterest {
   x: number;
@@ -241,6 +241,8 @@ export class WorldScene implements Scene {
     this.playerWorldY = ny;
     game.player.placeOnMap(nx, ny);
 
+    this.consumeHunger(game);
+
     // Check POI
     const poi = this.pois.find((p) => p.x === nx && p.y === ny);
     if (poi) {
@@ -250,8 +252,30 @@ export class WorldScene implements Scene {
     return true;
   }
 
-  onWait(_game: Game): void {
-    // Nothing happens on world map wait
+  private consumeHunger(game: Game): void {
+    const p = game.player;
+    p.hunger -= HUNGER_COST_PER_TURN;
+    if (p.hunger < 0) p.hunger = 0;
+    if (p.hunger === 0) {
+      p.hp -= 3;
+      game.addMessage("空腹で3ダメージ！");
+      if (p.hp <= 0) {
+        p.hp = 0;
+        game.gameOver();
+      }
+    }
+  }
+
+  onWait(game: Game): void {
+    // Resting on world map
+    const p = game.player;
+    if (p.hp < p.maxHp && p.hunger > 0) {
+      const heal = Math.min(3, p.maxHp - p.hp);
+      p.hp += heal;
+      p.hunger = Math.max(0, p.hunger - 1);
+      game.addMessage(`休息してHP${heal}回復（満腹-1）`);
+    }
+    this.consumeHunger(game);
   }
 
   onDescend(game: Game): boolean {
