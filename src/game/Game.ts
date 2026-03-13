@@ -2,6 +2,7 @@ import { Display } from "../ui/Display";
 import { TouchInput } from "../ui/TouchInput";
 import { Dungeon } from "./Dungeon";
 import { Player } from "./Player";
+import { Enemy, spawnEnemies } from "./Enemy";
 import { TOTAL_FLOORS } from "../constants";
 
 export type GameState = "playing" | "gameover" | "win";
@@ -10,10 +11,10 @@ export class Game {
   display!: Display;
   dungeon!: Dungeon;
   player!: Player;
+  enemies: Enemy[] = [];
   currentFloor = 1;
   state: GameState = "playing";
   messages: string[] = [];
-
   input!: TouchInput;
 
   init(): void {
@@ -35,6 +36,7 @@ export class Game {
     this.dungeon = new Dungeon(this, this.currentFloor);
     this.dungeon.generate();
     this.player.placeOnMap(this.dungeon.startX, this.dungeon.startY);
+    this.enemies = spawnEnemies(this, this.currentFloor);
     this.player.computeFOV();
     this.addMessage(`--- ${this.currentFloor}階 ---`);
   }
@@ -49,6 +51,19 @@ export class Game {
     this.currentFloor++;
     this.generateFloor();
     this.render();
+  }
+
+  getEnemyAt(x: number, y: number): Enemy | undefined {
+    return this.enemies.find(e => e.isAlive() && e.x === x && e.y === y);
+  }
+
+  processEnemyTurns(): void {
+    for (const enemy of this.enemies) {
+      if (enemy.isAlive()) {
+        enemy.act();
+        if (this.state !== "playing") return;
+      }
+    }
   }
 
   addMessage(msg: string): void {

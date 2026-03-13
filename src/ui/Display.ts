@@ -10,6 +10,7 @@ import {
   COLOR_STAIRS,
   COLOR_PLAYER,
   COLOR_EXPLORED,
+  COLOR_ENEMY,
 } from "../constants";
 import { Dungeon } from "../game/Dungeon";
 
@@ -71,6 +72,13 @@ export class Display {
         }
 
         this.rotDisplay.draw(x, y, tile.char, fg, null);
+      }
+    }
+
+    // Draw enemies
+    for (const enemy of game.enemies) {
+      if (enemy.isAlive() && player.visibleTiles.has(`${enemy.x},${enemy.y}`)) {
+        this.rotDisplay.draw(enemy.x, enemy.y, enemy.char, COLOR_ENEMY, null);
       }
     }
 

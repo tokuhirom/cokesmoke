@@ -50,10 +50,29 @@ export class Player extends Entity {
 
     if (!this.game.dungeon.isWalkable(nx, ny)) return false;
 
+    // Check for enemy at target
+    const enemy = this.game.getEnemyAt(nx, ny);
+    if (enemy) {
+      this.attackEnemy(enemy);
+      this.endTurn();
+      return true;
+    }
+
     this.x = nx;
     this.y = ny;
     this.endTurn();
     return true;
+  }
+
+  private attackEnemy(enemy: Entity): void {
+    // SP bonus to attack: higher SP = more damage
+    const spBonus = Math.floor(this.sp / 20);
+    const totalAtk = this.attack + spBonus;
+    const dmg = enemy.takeDamage(totalAtk);
+    this.game.addMessage(`${enemy.name}に${dmg}ダメージ！`);
+    if (!enemy.isAlive()) {
+      this.game.addMessage(`${enemy.name}を倒した！`);
+    }
   }
 
   endTurn(): void {
@@ -77,8 +96,11 @@ export class Player extends Entity {
 
     // Check stairs
     if (tile && tile.char === ">") {
-      this.game.addMessage("階段を見つけた！降りますか？（階段の上でもう一度移動）");
+      this.game.addMessage("階段を見つけた！ >キーで降りる");
     }
+
+    // Enemy turns
+    this.game.processEnemyTurns();
 
     this.computeFOV();
   }
