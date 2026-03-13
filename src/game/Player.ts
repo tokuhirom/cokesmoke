@@ -60,6 +60,10 @@ export class Player extends Entity {
 
     this.x = nx;
     this.y = ny;
+
+    // Auto-pickup items
+    this.game.pickupItem(this.x, this.y);
+
     this.endTurn();
     return true;
   }

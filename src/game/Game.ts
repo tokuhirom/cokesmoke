@@ -3,6 +3,7 @@ import { TouchInput } from "../ui/TouchInput";
 import { Dungeon } from "./Dungeon";
 import { Player } from "./Player";
 import { Enemy, spawnEnemies } from "./Enemy";
+import { ItemInstance, spawnItems } from "./Item";
 import { TOTAL_FLOORS } from "../constants";
 
 export type GameState = "playing" | "gameover" | "win";
@@ -12,6 +13,7 @@ export class Game {
   dungeon!: Dungeon;
   player!: Player;
   enemies: Enemy[] = [];
+  items: ItemInstance[] = [];
   currentFloor = 1;
   state: GameState = "playing";
   messages: string[] = [];
@@ -37,6 +39,7 @@ export class Game {
     this.dungeon.generate();
     this.player.placeOnMap(this.dungeon.startX, this.dungeon.startY);
     this.enemies = spawnEnemies(this, this.currentFloor);
+    this.items = spawnItems(this, this.currentFloor);
     this.player.computeFOV();
     this.addMessage(`--- ${this.currentFloor}階 ---`);
   }
@@ -51,6 +54,14 @@ export class Game {
     this.currentFloor++;
     this.generateFloor();
     this.render();
+  }
+
+  pickupItem(x: number, y: number): void {
+    const item = this.items.find(i => !i.picked && i.x === x && i.y === y);
+    if (item) {
+      item.picked = true;
+      item.def.effect(this);
+    }
   }
 
   getEnemyAt(x: number, y: number): Enemy | undefined {

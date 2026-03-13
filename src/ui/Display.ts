@@ -11,6 +11,7 @@ import {
   COLOR_PLAYER,
   COLOR_EXPLORED,
   COLOR_ENEMY,
+  COLOR_ITEM,
 } from "../constants";
 import { Dungeon } from "../game/Dungeon";
 
@@ -72,6 +73,13 @@ export class Display {
         }
 
         this.rotDisplay.draw(x, y, tile.char, fg, null);
+      }
+    }
+
+    // Draw items
+    for (const item of game.items) {
+      if (!item.picked && player.visibleTiles.has(`${item.x},${item.y}`)) {
+        this.rotDisplay.draw(item.x, item.y, item.def.char, COLOR_ITEM, null);
       }
     }
 
