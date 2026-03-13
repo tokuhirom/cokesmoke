@@ -1,0 +1,77 @@
+<!DOCTYPE html>
+<html lang="ja">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, user-scalable=no" />
+    <title>Coalsmoke</title>
+    <style>
+      * {
+        margin: 0;
+        padding: 0;
+        box-sizing: border-box;
+      }
+      body {
+        background: #1a1a2e;
+        color: #c8c8c8;
+        font-family: monospace;
+        overflow: hidden;
+        touch-action: none;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        height: 100dvh;
+      }
+      #status-bar {
+        width: 100%;
+        padding: 4px 8px;
+        background: #16213e;
+        font-size: 14px;
+        line-height: 1.4;
+      }
+      #game-container {
+        flex: 1;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        overflow: hidden;
+      }
+      #skill-bar {
+        width: 100%;
+        padding: 8px;
+        background: #16213e;
+        display: grid;
+        grid-template-columns: repeat(4, 1fr);
+        gap: 4px;
+      }
+      #skill-bar button {
+        background: #0f3460;
+        color: #e94560;
+        border: 1px solid #e94560;
+        padding: 8px 4px;
+        font-family: monospace;
+        font-size: 12px;
+        border-radius: 4px;
+        cursor: pointer;
+      }
+      #skill-bar button:disabled {
+        opacity: 0.4;
+      }
+      #message-log {
+        width: 100%;
+        padding: 2px 8px;
+        background: #0a0a1a;
+        font-size: 12px;
+        height: 2.8em;
+        overflow: hidden;
+        line-height: 1.4;
+      }
+    </style>
+  </head>
+  <body>
+    <div id="status-bar"></div>
+    <div id="game-container"></div>
+    <div id="message-log"></div>
+    <div id="skill-bar"></div>
+    <script type="module" src="/src/main.ts"></script>
+  </body>
+</html>
