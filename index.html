@@ -100,9 +100,94 @@
         border-color: #ffcc00;
         color: #ffcc00;
       }
+
+      /* Title / Help overlay */
+      #overlay {
+        position: fixed;
+        inset: 0;
+        background: #1a1a2e;
+        display: flex;
+        flex-direction: column;
+        align-items: center;
+        justify-content: center;
+        z-index: 100;
+        padding: 16px;
+        overflow-y: auto;
+      }
+      #overlay.hidden { display: none; }
+      #overlay h1 {
+        font-size: 28px;
+        color: #e94560;
+        margin-bottom: 4px;
+        letter-spacing: 4px;
+      }
+      #overlay .subtitle {
+        color: #88ccff;
+        font-size: 13px;
+        margin-bottom: 24px;
+      }
+      #overlay .menu-btn {
+        background: #0f3460;
+        color: #e94560;
+        border: 1px solid #e94560;
+        padding: 12px 32px;
+        font-family: "Courier New", monospace;
+        font-size: 16px;
+        border-radius: 4px;
+        cursor: pointer;
+        margin: 6px 0;
+        min-width: 200px;
+        text-align: center;
+      }
+      #overlay .menu-btn:active {
+        background: #e94560;
+        color: #0f3460;
+      }
+      #overlay .menu-btn.secondary {
+        border-color: #88ccff;
+        color: #88ccff;
+      }
+      #overlay .menu-btn.secondary:active {
+        background: #88ccff;
+        color: #0f3460;
+      }
+      #help-content {
+        max-width: 380px;
+        width: 100%;
+        text-align: left;
+        font-size: 13px;
+        line-height: 1.7;
+        color: #c8c8c8;
+      }
+      #help-content h2 {
+        color: #e94560;
+        font-size: 16px;
+        margin: 16px 0 6px 0;
+        border-bottom: 1px solid #2a3a5e;
+        padding-bottom: 2px;
+      }
+      #help-content table {
+        width: 100%;
+        border-collapse: collapse;
+        margin: 4px 0 8px 0;
+      }
+      #help-content td {
+        padding: 2px 6px;
+        vertical-align: top;
+      }
+      #help-content td:first-child {
+        white-space: nowrap;
+        color: #88ccff;
+        width: 70px;
+      }
+      .back-btn-wrap {
+        margin-top: 20px;
+        text-align: center;
+      }
     </style>
   </head>
   <body>
+    <div id="overlay"><!-- filled by JS --></div>
     <div id="status-bar"></div>
     <div id="game-container"></div>
     <div id="message-log"></div>

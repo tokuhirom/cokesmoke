@@ -15,8 +15,9 @@ export class TouchInput {
 
   private setupKeyboard(): void {
     window.addEventListener("keydown", (e) => {
-      if (this.game.state !== "playing") {
-        if (e.key === "Enter") this.game.startNewGame();
+      if (this.game.state === "title" || this.game.state === "help") return;
+      if (this.game.state === "gameover" || this.game.state === "win") {
+        if (e.key === "Enter") this.game.showTitle();
         return;
       }
 
@@ -85,7 +86,9 @@ export class TouchInput {
 
     container.addEventListener("touchend", (e) => {
       if (this.game.state !== "playing") {
-        this.game.startNewGame();
+        if (this.game.state === "gameover" || this.game.state === "win") {
+          this.game.showTitle();
+        }
         return;
       }
 
