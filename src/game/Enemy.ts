@@ -70,7 +70,7 @@ export class Enemy extends Entity {
       return true;
     };
 
-    const astar = new ROT.Path.AStar(player.x, player.y, passable, { topology: 4 });
+    const astar = new ROT.Path.AStar(player.x, player.y, passable, { topology: 8 });
     const path: [number, number][] = [];
     astar.compute(this.x, this.y, (x, y) => {
       path.push([x, y]);
@@ -83,7 +83,7 @@ export class Enemy extends Entity {
   }
 
   private wander(): void {
-    const dirs = ROT.DIRS[4];
+    const dirs = ROT.DIRS[8];
     const dir = dirs[Math.floor(ROT.RNG.getUniform() * dirs.length)];
     const nx = this.x + dir[0];
     const ny = this.y + dir[1];
