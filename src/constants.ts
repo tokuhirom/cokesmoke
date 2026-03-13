@@ -1,5 +1,5 @@
-export const MAP_WIDTH = 40;
-export const MAP_HEIGHT = 25;
+export const MAP_WIDTH = 35;
+export const MAP_HEIGHT = 20;
 
 export const FOV_RADIUS = 5;
 

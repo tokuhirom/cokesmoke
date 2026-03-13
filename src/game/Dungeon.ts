@@ -43,9 +43,10 @@ export class Dungeon {
 
   generate(): void {
     const digger = new ROT.Map.Digger(MAP_WIDTH, MAP_HEIGHT, {
-      roomWidth: [3, 8],
-      roomHeight: [3, 5],
-      corridorLength: [1, 5],
+      roomWidth: [5, 10],
+      roomHeight: [4, 7],
+      corridorLength: [1, 4],
+      dugPercentage: 0.4,
     });
 
     // Fill everything as wall first

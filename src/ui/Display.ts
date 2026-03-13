@@ -25,6 +25,7 @@ export class Display {
       height: MAP_HEIGHT,
       fontSize: FONT_SIZE,
       fontFamily: "monospace",
+      forceSquareRatio: true,
       bg: "#1a1a2e",
     });
     container.appendChild(this.rotDisplay.getContainer()!);
@@ -54,26 +55,43 @@ export class Display {
         if (!visible && !explored) continue;
 
         let fg: string;
+        let bg: string | null = null;
+        let ch = tile.char;
+
         if (!visible) {
+          // Explored but not currently visible
           fg = COLOR_EXPLORED;
+          if (tile.walkable) {
+            ch = "\u00b7";
+            bg = "#0d0d1a";
+          }
         } else {
           switch (tile.char) {
             case "\u2588":
               fg = COLOR_WALL;
+              bg = "#1e1e3a";
               break;
             case "\u2261":
               fg = COLOR_STEAM_PIPE;
+              bg = "#1a2030";
               break;
             case ">":
               fg = COLOR_STAIRS;
+              bg = "#1a2030";
+              break;
+            case " ":
+              ch = "\u00b7";
+              fg = "#333350";
+              bg = "#1a2030";
               break;
             default:
               fg = COLOR_FLOOR;
+              bg = "#1a2030";
               break;
           }
         }
 
-        this.rotDisplay.draw(x, y, tile.char, fg, null);
+        this.rotDisplay.draw(x, y, ch, fg, bg);
       }
     }
 
