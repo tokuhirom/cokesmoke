@@ -13,10 +13,10 @@ export const ITEM_DEFS: ItemDef[] = [
   {
     char: "\u2666",
     name: "石炭袋",
-    description: "燃料+30",
+    description: "燃料+50",
     effect: (game) => {
-      game.player.fuel += 30;
-      game.addMessage("石炭袋を拾った！燃料+30");
+      game.player.fuel += 50;
+      game.addMessage("石炭袋を拾った！燃料+50");
     },
   },
   {
@@ -99,16 +99,16 @@ export function spawnItems(game: Game, floor: number): ItemInstance[] {
     return true;
   });
 
-  // More coal bags early, more weapons/armor later
-  const count = 3 + Math.floor(floor * 0.5);
+  // More items per floor to keep fuel sustainable
+  const count = 5 + floor;
   for (let i = 0; i < Math.min(count, floorTiles.length); i++) {
     const idx = Math.floor(ROT.RNG.getUniform() * floorTiles.length);
     const [x, y] = floorTiles[idx];
     floorTiles.splice(idx, 1);
 
-    // Weight coal bags more heavily
+    // Weight coal bags heavily so fuel doesn't run out
     let defIdx: number;
-    if (ROT.RNG.getUniform() < 0.4) {
+    if (ROT.RNG.getUniform() < 0.5) {
       defIdx = 0; // coal bag
     } else {
       defIdx = Math.floor(ROT.RNG.getUniform() * ITEM_DEFS.length);
