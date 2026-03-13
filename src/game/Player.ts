@@ -5,7 +5,7 @@ import type { EquipmentDef } from "./Equipment";
 import {
   PLAYER_INITIAL_HP,
   PLAYER_INITIAL_SP,
-  PLAYER_INITIAL_FUEL,
+  PLAYER_INITIAL_HUNGER,
   COLOR_PLAYER,
 } from "../constants";
 
@@ -13,7 +13,8 @@ export class Player extends Entity {
   sp: number;
   maxSp: number;
   baseSp: number;
-  fuel: number;
+  hunger: number;
+  maxHunger: number;
   visibleTiles: Set<string> = new Set();
   skills: SkillDef[] = [];
   armorTurns = 0;
@@ -39,7 +40,8 @@ export class Player extends Entity {
     this.baseSp = PLAYER_INITIAL_SP;
     this.sp = PLAYER_INITIAL_SP;
     this.maxSp = PLAYER_INITIAL_SP;
-    this.fuel = PLAYER_INITIAL_FUEL;
+    this.hunger = PLAYER_INITIAL_HUNGER;
+    this.maxHunger = PLAYER_INITIAL_HUNGER;
   }
 
   recalcStats(): void {

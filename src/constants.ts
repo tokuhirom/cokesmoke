@@ -5,10 +5,10 @@ export const FOV_RADIUS = 5;
 
 export const PLAYER_INITIAL_HP = 100;
 export const PLAYER_INITIAL_SP = 80;
-export const PLAYER_INITIAL_FUEL = 200;
+export const PLAYER_INITIAL_HUNGER = 200;
 
 export const SP_REGEN_PER_TURN = 3;
-export const FUEL_COST_PER_TURN = 1;
+export const HUNGER_COST_PER_TURN = 1;
 
 export const OVERLOAD_DAMAGE = 20;
 

@@ -13,11 +13,11 @@ export interface ItemDef {
 export const ITEM_DEFS: ItemDef[] = [
   {
     char: "\u2666",
-    name: "たいまつ",
-    description: "明かり+50",
+    name: "干し肉",
+    description: "満腹+50",
     effect: (game) => {
-      game.player.fuel += 50;
-      game.addMessage("たいまつを拾った！明かり+50");
+      game.player.hunger = Math.min(game.player.maxHunger, game.player.hunger + 50);
+      game.addMessage("干し肉を食べた！満腹+50");
     },
   },
   {

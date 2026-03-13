@@ -16,7 +16,7 @@ import {
   COLOR_ENEMY,
   COLOR_ITEM,
   SP_REGEN_PER_TURN,
-  FUEL_COST_PER_TURN,
+  HUNGER_COST_PER_TURN,
   FOV_RADIUS,
 } from "../../constants";
 
@@ -168,11 +168,17 @@ export class DungeonScene implements Scene {
 
     if (p.armorTurns > 0) p.armorTurns--;
 
-    p.fuel -= FUEL_COST_PER_TURN;
-    if (p.fuel <= 0) {
-      p.fuel = 0;
-      game.gameOver();
-      return;
+    p.hunger -= HUNGER_COST_PER_TURN;
+    if (p.hunger < 0) p.hunger = 0;
+    if (p.hunger === 0) {
+      const starveDmg = 3;
+      p.hp -= starveDmg;
+      game.addMessage(`空腹で${starveDmg}ダメージ！`);
+      if (p.hp <= 0) {
+        p.hp = 0;
+        game.gameOver();
+        return;
+      }
     }
 
     p.sp = Math.min(p.maxSp, p.sp + SP_REGEN_PER_TURN);
@@ -330,7 +336,7 @@ export class DungeonScene implements Scene {
 
     return (
       `<span class="hp-color">HP:${hpBar} ${p.hp}/${p.maxHp}</span>  ` +
-      `<span class="fuel-color">松明:${p.fuel}</span>  ` +
+      `<span class="fuel-color">満腹:${p.hunger}</span>  ` +
       `<span class="floor-color">${floorLabel}</span>${armorStr}${weaponStr}<br>` +
       `<span class="sp-color">MP:[${spBar}] ${p.sp}/${p.maxSp}</span>` +
       `  ATK:${p.attack} DEF:${p.defense}`

@@ -12,7 +12,7 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     id: "wake_up",
     trigger: () => true, // Immediate
     message:
-      "頭がぼんやりする...ここは...迷宮？\n手元にたいまつが1本だけある。\n\nまずは歩いてみよう。\n（D-padか矢印キーで移動）",
+      "頭がぼんやりする...ここは...迷宮？\n少し腹が減っている。\n\nまずは歩いてみよう。\n（D-padか矢印キーで移動）",
   },
   {
     id: "first_move",
@@ -21,7 +21,7 @@ const TUTORIAL_STEPS: TutorialStep[] = [
       return p.x !== game.dungeon.startX || p.y !== game.dungeon.startY;
     },
     message:
-      "動けるようだ。たいまつの明かりで周囲が見える。\n暗闇の先には何があるのか...\n\n明かり(松明)は毎ターン減る。0になると闇に呑まれてしまう。",
+      "動けるようだ。周囲が少し見える。\n\n満腹度は毎ターン減る。0になると空腹で\n体力が削られていくので食料を確保しよう。",
   },
   {
     id: "see_enemy",
@@ -43,8 +43,7 @@ const TUTORIAL_STEPS: TutorialStep[] = [
     trigger: (game) => {
       return game.items.some((i) => !i.picked && game.player.visibleTiles.has(`${i.x},${i.y}`));
     },
-    message:
-      "何か落ちている！\n\nアイテムの上を歩くと自動で拾える。\nたいまつは最優先で確保しよう。",
+    message: "何か落ちている！\n\nアイテムの上を歩くと自動で拾える。\n食料は最優先で確保しよう。",
   },
   {
     id: "pickup_item",

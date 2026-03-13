@@ -11,7 +11,7 @@ export interface SavedWorld {
   playerMaxHp: number;
   playerSp: number;
   playerBaseSp: number;
-  playerFuel: number;
+  playerHunger: number;
   playerBaseAttack: number;
   playerBaseDefense: number;
   playerSkills: string[]; // skill names

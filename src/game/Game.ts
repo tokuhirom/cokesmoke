@@ -36,7 +36,7 @@ const STORAGE_KEY = "isekai_dungeon_tutorial_done";
 const PROLOGUE_PAGES = [
   "「...あれ？ 俺、たしか帰り道で...」",
   "目を開けると、冷たい石の床の上だった。\n\nここは...迷宮？\n記憶が曖昧だが、一つだけ確かなことがある\n——元の世界とは違う場所にいる。",
-  "手元に一本のたいまつ。\n壁に刻まれた文字が微かに光る。\n\n『10階を踏破せし者に、\n　地上への道が開かれん』\n\n...行くしかない。",
+  "手元には何もない。腹が減っている。\n壁に刻まれた文字が微かに光る。\n\n『全ての迷宮を踏破せし者に、\n　帰還の道が開かれん』\n\n...行くしかない。",
 ];
 
 export class Game {
@@ -232,7 +232,7 @@ export class Game {
     this.player.maxHp = saved.playerMaxHp;
     this.player.sp = saved.playerSp;
     this.player.baseSp = saved.playerBaseSp;
-    this.player.fuel = saved.playerFuel;
+    this.player.hunger = saved.playerHunger;
     this.player.baseAttack = saved.playerBaseAttack;
     this.player.baseDefense = saved.playerBaseDefense;
 
@@ -294,7 +294,7 @@ export class Game {
       playerMaxHp: this.player.maxHp,
       playerSp: this.player.sp,
       playerBaseSp: this.player.baseSp,
-      playerFuel: this.player.fuel,
+      playerHunger: this.player.hunger,
       playerBaseAttack: this.player.baseAttack,
       playerBaseDefense: this.player.baseDefense,
       playerSkills: this.player.skills.map((s) => s.name),
@@ -389,7 +389,7 @@ export class Game {
 
         <h2>迷宮</h2>
         <p>入るたびに構成が変わる不思議な迷宮。
-        たいまつ(<span style="color:#44ff88">\u2666</span>)を拾って明かりを確保しよう。
+        食料(<span style="color:#44ff88">\u2666</span>)を拾って空腹を凌ごう。
         最深部に到達すると踏破完了。</p>
 
         <h2>装備と素材</h2>
@@ -549,7 +549,7 @@ export class Game {
     // Respawn at starting town with HP restored, lose materials
     this.player.hp = this.player.maxHp;
     this.player.sp = this.player.maxSp;
-    this.player.fuel = 200;
+    this.player.hunger = this.player.maxHunger;
     this.player.materials.clear();
     this.addMessage("素材を全て失った...");
 

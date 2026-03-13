@@ -329,7 +329,7 @@ export class WorldScene implements Scene {
 
     return (
       `<span class="hp-color">HP:${p.hp}/${p.maxHp}</span>  ` +
-      `<span class="fuel-color">松明:${p.fuel}</span>  ` +
+      `<span class="fuel-color">満腹:${p.hunger}</span>  ` +
       `<span class="floor-color">${locStr}</span>`
     );
   }
