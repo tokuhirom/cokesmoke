@@ -1,7 +1,6 @@
 import * as ROT from "rot-js";
 import { Entity } from "./Entity";
 import type { Game } from "./Game";
-import { Dungeon } from "./Dungeon";
 import { COLOR_ENEMY } from "../constants";
 
 export interface EnemyDef {
@@ -17,7 +16,15 @@ export interface EnemyDef {
 export const ENEMY_DEFS: Record<string, EnemyDef> = {
   g: { char: "g", name: "ゴーレム兵", hp: 30, attack: 8, defense: 4, speed: 0.5, isBoss: false },
   s: { char: "s", name: "蒸気スパイダー", hp: 12, attack: 5, defense: 1, speed: 2, isBoss: false },
-  B: { char: "B", name: "ボイラーブルート", hp: 50, attack: 12, defense: 3, speed: 1, isBoss: false },
+  B: {
+    char: "B",
+    name: "ボイラーブルート",
+    hp: 50,
+    attack: 12,
+    defense: 3,
+    speed: 1,
+    isBoss: false,
+  },
   W: { char: "W", name: "霧の番人", hp: 100, attack: 15, defense: 6, speed: 1, isBoss: true },
 };
 
@@ -34,8 +41,6 @@ export class Enemy extends Entity {
 
   act(): void {
     const player = this.game.player;
-    const playerKey = `${player.x},${player.y}`;
-
     // Check if player is visible
     if (player.visibleTiles.has(`${this.x},${this.y}`)) {
       this.awakened = true;
@@ -49,7 +54,7 @@ export class Enemy extends Entity {
     // Adjacent to player? Attack
     const dx = Math.abs(player.x - this.x);
     const dy = Math.abs(player.y - this.y);
-    if (dx <= 1 && dy <= 1 && (dx + dy > 0)) {
+    if (dx <= 1 && dy <= 1 && dx + dy > 0) {
       this.attackPlayer();
       return;
     }
@@ -84,7 +89,9 @@ export class Enemy extends Entity {
     const ny = this.y + dir[1];
     if (this.game.dungeon.isWalkable(nx, ny)) {
       // Don't walk into other enemies
-      const occupied = this.game.enemies.some(e => e !== this && e.isAlive() && e.x === nx && e.y === ny);
+      const occupied = this.game.enemies.some(
+        (e) => e !== this && e.isAlive() && e.x === nx && e.y === ny,
+      );
       if (!occupied) {
         this.x = nx;
         this.y = ny;

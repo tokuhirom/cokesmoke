@@ -1,6 +1,5 @@
 import * as ROT from "rot-js";
 import type { Game } from "./Game";
-import { COLOR_ITEM } from "../constants";
 
 export interface ItemDef {
   char: string;
@@ -86,7 +85,7 @@ export function spawnItems(game: Game, floor: number): ItemInstance[] {
     if (x === game.dungeon.startX && y === game.dungeon.startY) return false;
     if (x === game.dungeon.stairsX && y === game.dungeon.stairsY) return false;
     // Don't place on enemies
-    if (game.enemies.some(e => e.x === x && e.y === y)) return false;
+    if (game.enemies.some((e) => e.x === x && e.y === y)) return false;
     return true;
   });
 
