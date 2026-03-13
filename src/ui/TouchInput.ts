@@ -11,6 +11,13 @@ export class TouchInput {
     this.setupKeyboard();
     this.setupTouch();
     this.setupSkillButtons();
+    this.setupDpad();
+  }
+
+  private doMove(dx: number, dy: number): void {
+    if (this.game.state !== "playing") return;
+    this.game.player.tryMove(dx, dy);
+    this.game.render();
   }
 
   private setupKeyboard(): void {
@@ -34,6 +41,7 @@ export class TouchInput {
       let dx = 0,
         dy = 0;
       switch (e.key) {
+        // Cardinal
         case "ArrowUp":
         case "k":
           dy = -1;
@@ -50,6 +58,23 @@ export class TouchInput {
         case "l":
           dx = 1;
           break;
+        // Diagonal (vi-keys)
+        case "y":
+          dx = -1;
+          dy = -1;
+          break;
+        case "u":
+          dx = 1;
+          dy = -1;
+          break;
+        case "b":
+          dx = -1;
+          dy = 1;
+          break;
+        case "n":
+          dx = 1;
+          dy = 1;
+          break;
         case ".":
         case "5":
           this.game.player.endTurn();
@@ -64,8 +89,7 @@ export class TouchInput {
 
       e.preventDefault();
       if (dx !== 0 || dy !== 0) {
-        this.game.player.tryMove(dx, dy);
-        this.game.render();
+        this.doMove(dx, dy);
       }
     });
   }
@@ -97,29 +121,88 @@ export class TouchInput {
       const diffY = touch.clientY - this.startY;
 
       if (Math.abs(diffX) < MIN_SWIPE && Math.abs(diffY) < MIN_SWIPE) {
-        // Tap - wait action
         this.game.player.endTurn();
         this.game.render();
         return;
       }
 
-      let dx = 0,
-        dy = 0;
-      if (Math.abs(diffX) > Math.abs(diffY)) {
-        dx = diffX > 0 ? 1 : -1;
-      } else {
-        dy = diffY > 0 ? 1 : -1;
-      }
+      // 8-direction swipe: use angle to determine direction
+      const angle = Math.atan2(diffY, diffX);
+      const [dx, dy] = this.angleToDir(angle);
 
-      this.game.player.tryMove(dx, dy);
-      this.game.render();
+      this.doMove(dx, dy);
     });
+  }
+
+  private angleToDir(angle: number): [number, number] {
+    // Split circle into 8 sectors of 45 degrees each
+    // angle is in radians, -PI to PI
+    const PI = Math.PI;
+    const sector = Math.round((angle / PI) * 4); // -4 to 4
+    switch (sector) {
+      case 0:
+        return [1, 0]; // right
+      case 1:
+        return [1, 1]; // down-right
+      case 2:
+      case -2:
+        return [0, 1]; // down  (handle both +PI and -PI)
+      case -1:
+        return [1, -1]; // up-right... wait
+      default:
+        break;
+    }
+    // More straightforward approach
+    const deg = (angle * 180) / PI;
+    // deg: -180 to 180. 0=right, 90=down, -90=up, +-180=left
+    if (deg >= -22.5 && deg < 22.5) return [1, 0];
+    if (deg >= 22.5 && deg < 67.5) return [1, 1];
+    if (deg >= 67.5 && deg < 112.5) return [0, 1];
+    if (deg >= 112.5 && deg < 157.5) return [-1, 1];
+    if (deg >= 157.5 || deg < -157.5) return [-1, 0];
+    if (deg >= -157.5 && deg < -112.5) return [-1, -1];
+    if (deg >= -112.5 && deg < -67.5) return [0, -1];
+    if (deg >= -67.5 && deg < -22.5) return [1, -1];
+    return [0, 0];
+  }
+
+  private setupDpad(): void {
+    const dpad = document.getElementById("dpad")!;
+    if (!dpad) return;
+
+    // 3x3 grid: [NW, N, NE, W, -, E, SW, S, SE]
+    const dirs: [string, number, number][] = [
+      ["\u2196", -1, -1],
+      ["\u2191", 0, -1],
+      ["\u2197", 1, -1],
+      ["\u2190", -1, 0],
+      ["\u00b7", 0, 0],
+      ["\u2192", 1, 0],
+      ["\u2199", -1, 1],
+      ["\u2193", 0, 1],
+      ["\u2198", 1, 1],
+    ];
+
+    for (const [label, dx, dy] of dirs) {
+      const btn = document.createElement("button");
+      btn.textContent = label;
+      if (dx === 0 && dy === 0) {
+        // Center = wait
+        btn.addEventListener("click", () => {
+          if (this.game.state !== "playing") return;
+          this.game.player.endTurn();
+          this.game.render();
+        });
+      } else {
+        btn.addEventListener("click", () => this.doMove(dx, dy));
+      }
+      dpad.appendChild(btn);
+    }
   }
 
   private setupSkillButtons(): void {
     const skillBar = document.getElementById("skill-bar")!;
 
-    // Create 3 skill buttons + wait button
     for (let i = 0; i < 3; i++) {
       const btn = document.createElement("button");
       btn.id = `skill-btn-${i}`;
@@ -172,7 +255,6 @@ export class TouchInput {
       }
     }
 
-    // Update descend button
     const descendBtn = document.getElementById("descend-btn") as HTMLButtonElement;
     if (descendBtn) {
       const tile = this.game.dungeon.getTile(p.x, p.y);

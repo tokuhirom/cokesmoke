@@ -184,6 +184,80 @@
         margin-top: 20px;
         text-align: center;
       }
+
+      /* D-pad */
+      #controls-row {
+        width: 100%;
+        display: flex;
+        gap: 4px;
+        padding: 4px;
+        background: linear-gradient(0deg, #0d1b30, #16213e);
+        border-top: 1px solid #2a3a5e;
+      }
+      #dpad {
+        display: grid;
+        grid-template-columns: repeat(3, 1fr);
+        gap: 2px;
+        flex-shrink: 0;
+        width: 132px;
+      }
+      #dpad button {
+        background: #0f3460;
+        color: #88ccff;
+        border: 1px solid #334466;
+        font-size: 18px;
+        width: 42px;
+        height: 42px;
+        border-radius: 4px;
+        cursor: pointer;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 0;
+        font-family: "Courier New", monospace;
+      }
+      #dpad button:active {
+        background: #88ccff;
+        color: #0f3460;
+      }
+      #skill-bar {
+        flex: 1;
+        padding: 2px 4px;
+        background: transparent;
+        display: grid;
+        grid-template-columns: repeat(1, 1fr);
+        gap: 2px;
+        border-top: none;
+      }
+      #skill-bar button {
+        background: #0f3460;
+        color: #e94560;
+        border: 1px solid #e94560;
+        padding: 4px 4px;
+        font-family: "Courier New", monospace;
+        font-size: 11px;
+        border-radius: 4px;
+        cursor: pointer;
+        transition: background 0.1s;
+        min-height: 24px;
+      }
+      #skill-bar button:active:not(:disabled) {
+        background: #e94560;
+        color: #0f3460;
+      }
+      #skill-bar button:disabled {
+        opacity: 0.3;
+        border-color: #666;
+        color: #666;
+      }
+      #skill-bar button.wait-btn {
+        border-color: #88ccff;
+        color: #88ccff;
+      }
+      #skill-bar button.descend-btn {
+        border-color: #ffcc00;
+        color: #ffcc00;
+      }
     </style>
   </head>
   <body>
@@ -191,7 +265,10 @@
     <div id="status-bar"></div>
     <div id="game-container"></div>
     <div id="message-log"></div>
-    <div id="skill-bar"></div>
+    <div id="controls-row">
+      <div id="dpad"></div>
+      <div id="skill-bar"></div>
+    </div>
     <script type="module" src="/src/main.ts"></script>
   </body>
 </html>

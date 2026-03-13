@@ -55,11 +55,12 @@ export class Game {
 
         <h2>操作方法</h2>
         <table>
-          <tr><td>移動</td><td>矢印キー / HJKL / スワイプ</td></tr>
-          <tr><td>待機</td><td>. キー / タップ / 待機ボタン</td></tr>
+          <tr><td>移動</td><td>8方向D-pad / スワイプ / 矢印キー</td></tr>
+          <tr><td>斜め</td><td>D-pad斜めボタン / 斜めスワイプ / YUBN</td></tr>
+          <tr><td>待機</td><td>D-pad中央 / タップ / .キー</td></tr>
           <tr><td>階段</td><td>> キー / 階段ボタン</td></tr>
           <tr><td>スキル</td><td>1-3キー / スキルボタン</td></tr>
-          <tr><td>攻撃</td><td>敵の方向に移動</td></tr>
+          <tr><td>攻撃</td><td>敵の方向に移動（斜めもOK）</td></tr>
         </table>
 
         <h2>蒸気圧 (SP)</h2>
