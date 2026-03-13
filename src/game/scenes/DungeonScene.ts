@@ -151,6 +151,14 @@ export class DungeonScene implements Scene {
   }
 
   onWait(game: Game): void {
+    // Resting: recover HP but costs extra hunger
+    const p = game.player;
+    if (p.hp < p.maxHp && p.hunger > 0) {
+      const heal = Math.min(3, p.maxHp - p.hp);
+      p.hp += heal;
+      p.hunger = Math.max(0, p.hunger - 1);
+      game.addMessage(`休息してHP${heal}回復（満腹-1）`);
+    }
     this.endTurn(game);
   }
 
