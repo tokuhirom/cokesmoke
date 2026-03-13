@@ -135,34 +135,16 @@ export class TouchInput {
   }
 
   private angleToDir(angle: number): [number, number] {
-    // Split circle into 8 sectors of 45 degrees each
-    // angle is in radians, -PI to PI
-    const PI = Math.PI;
-    const sector = Math.round((angle / PI) * 4); // -4 to 4
-    switch (sector) {
-      case 0:
-        return [1, 0]; // right
-      case 1:
-        return [1, 1]; // down-right
-      case 2:
-      case -2:
-        return [0, 1]; // down  (handle both +PI and -PI)
-      case -1:
-        return [1, -1]; // up-right... wait
-      default:
-        break;
-    }
-    // More straightforward approach
-    const deg = (angle * 180) / PI;
-    // deg: -180 to 180. 0=right, 90=down, -90=up, +-180=left
-    if (deg >= -22.5 && deg < 22.5) return [1, 0];
-    if (deg >= 22.5 && deg < 67.5) return [1, 1];
-    if (deg >= 67.5 && deg < 112.5) return [0, 1];
-    if (deg >= 112.5 && deg < 157.5) return [-1, 1];
-    if (deg >= 157.5 || deg < -157.5) return [-1, 0];
-    if (deg >= -157.5 && deg < -112.5) return [-1, -1];
-    if (deg >= -112.5 && deg < -67.5) return [0, -1];
-    if (deg >= -67.5 && deg < -22.5) return [1, -1];
+    // angle from atan2(diffY, diffX): 0=right, PI/2=down, -PI/2=up
+    const deg = (angle * 180) / Math.PI;
+    if (deg >= -22.5 && deg < 22.5) return [1, 0]; // right
+    if (deg >= 22.5 && deg < 67.5) return [1, 1]; // down-right
+    if (deg >= 67.5 && deg < 112.5) return [0, 1]; // down
+    if (deg >= 112.5 && deg < 157.5) return [-1, 1]; // down-left
+    if (deg >= 157.5 || deg < -157.5) return [-1, 0]; // left
+    if (deg >= -157.5 && deg < -112.5) return [-1, -1]; // up-left
+    if (deg >= -112.5 && deg < -67.5) return [0, -1]; // up
+    if (deg >= -67.5 && deg < -22.5) return [1, -1]; // up-right
     return [0, 0];
   }
 
