@@ -60,9 +60,15 @@ export class Display {
 
         if (!visible) {
           // Explored but not currently visible
-          fg = COLOR_EXPLORED;
-          if (tile.walkable) {
-            ch = "\u00b7";
+          if (tile.char === ">") {
+            // Always show stairs once discovered
+            fg = "#998800";
+            bg = "#0d0d1a";
+          } else {
+            fg = COLOR_EXPLORED;
+            if (tile.walkable) {
+              ch = "\u00b7";
+            }
             bg = "#0d0d1a";
           }
         } else {
