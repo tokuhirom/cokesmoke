@@ -33,7 +33,7 @@ export class WorldScene implements Scene {
   pois: PointOfInterest[] = [];
   playerWorldX = 0;
   playerWorldY = 0;
-  private seed: number;
+  seed: number;
 
   constructor(seed: number) {
     this.width = 80;
