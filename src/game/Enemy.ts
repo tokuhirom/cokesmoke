@@ -110,6 +110,14 @@ export function spawnEnemies(game: Game, floor: number): Enemy[] {
     return true;
   });
 
+  // Tutorial floor: 1 weak slime in the enemy room
+  if (floor === 0) {
+    const slime = new Enemy(game, { ...ENEMY_DEFS["s"], hp: 5, attack: 2, defense: 0 });
+    slime.x = 22;
+    slime.y = 5;
+    return [slime];
+  }
+
   // Number of enemies scales with floor
   const count = 3 + floor * 2;
 

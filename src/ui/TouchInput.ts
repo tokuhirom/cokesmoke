@@ -14,8 +14,12 @@ export class TouchInput {
     this.setupDpad();
   }
 
+  private isInputBlocked(): boolean {
+    return this.game.tutorial?.pendingDialog != null;
+  }
+
   private doMove(dx: number, dy: number): void {
-    if (this.game.state !== "playing") return;
+    if (this.game.state !== "playing" || this.isInputBlocked()) return;
     this.game.player.tryMove(dx, dy);
     this.game.render();
   }
@@ -27,6 +31,8 @@ export class TouchInput {
         if (e.key === "Enter") this.game.showTitle();
         return;
       }
+
+      if (this.isInputBlocked()) return;
 
       // Skill keys: 1, 2, 3
       if (e.key >= "1" && e.key <= "3") {

@@ -4,9 +4,18 @@ import { Dungeon } from "./Dungeon";
 import { Player } from "./Player";
 import { Enemy, spawnEnemies } from "./Enemy";
 import { ItemInstance, spawnItems } from "./Item";
+import { TutorialManager } from "./Tutorial";
 import { TOTAL_FLOORS } from "../constants";
 
-export type GameState = "title" | "help" | "playing" | "gameover" | "win";
+export type GameState = "title" | "help" | "prologue" | "playing" | "gameover" | "win";
+
+const STORAGE_KEY = "isekai_dungeon_tutorial_done";
+
+const PROLOGUE_PAGES = [
+  "「...あれ？ 俺、たしか帰り道で...」",
+  "目を開けると、冷たい石の床の上だった。\n\nここは...迷宮？\n記憶が曖昧だが、一つだけ確かなことがある\n——元の世界とは違う場所にいる。",
+  "手元に一本のたいまつ。\n壁に刻まれた文字が微かに光る。\n\n『10階を踏破せし者に、\n　地上への道が開かれん』\n\n...行くしかない。",
+];
 
 export class Game {
   display!: Display;
@@ -18,6 +27,7 @@ export class Game {
   state: GameState = "title";
   messages: string[] = [];
   input!: TouchInput;
+  tutorial: TutorialManager | null = null;
 
   init(): void {
     this.display = new Display();
@@ -25,22 +35,77 @@ export class Game {
     this.showTitle();
   }
 
+  private isTutorialDone(): boolean {
+    try {
+      return localStorage.getItem(STORAGE_KEY) === "1";
+    } catch {
+      return false;
+    }
+  }
+
+  private markTutorialDone(): void {
+    try {
+      localStorage.setItem(STORAGE_KEY, "1");
+    } catch {
+      // Ignore
+    }
+  }
+
   showTitle(): void {
     this.state = "title";
     const overlay = document.getElementById("overlay")!;
     overlay.classList.remove("hidden");
+
+    const tutorialDone = this.isTutorialDone();
+
     overlay.innerHTML = `
       <h1>異世界迷宮録</h1>
       <div class="subtitle">Isekai Dungeon Crawl</div>
-      <button class="menu-btn" id="btn-start">冒険に出る</button>
+      <button class="menu-btn" id="btn-start">${tutorialDone ? "冒険に出る" : "冒険に出る"}</button>
+      ${tutorialDone ? '<button class="menu-btn secondary" id="btn-tutorial">チュートリアル</button>' : ""}
       <button class="menu-btn secondary" id="btn-help">遊び方</button>
     `;
     document.getElementById("btn-start")!.addEventListener("click", () => {
-      this.startNewGame();
+      if (tutorialDone) {
+        this.startNewGame(false);
+      } else {
+        this.showPrologue();
+      }
     });
+    if (tutorialDone) {
+      document.getElementById("btn-tutorial")!.addEventListener("click", () => {
+        this.showPrologue();
+      });
+    }
     document.getElementById("btn-help")!.addEventListener("click", () => {
       this.showHelp();
     });
+  }
+
+  showPrologue(): void {
+    this.state = "prologue";
+    const overlay = document.getElementById("overlay")!;
+    overlay.classList.remove("hidden");
+
+    let pageIndex = 0;
+    const renderPage = () => {
+      if (pageIndex >= PROLOGUE_PAGES.length) {
+        this.startNewGame(true);
+        return;
+      }
+      const text = PROLOGUE_PAGES[pageIndex].replace(/\n/g, "<br>");
+      overlay.innerHTML = `
+        <div class="prologue-text">
+          <p>${text}</p>
+          <div class="prologue-tap">${pageIndex < PROLOGUE_PAGES.length - 1 ? "タップで次へ" : "タップして冒険を始める"}</div>
+        </div>
+      `;
+      overlay.onclick = () => {
+        pageIndex++;
+        renderPage();
+      };
+    };
+    renderPage();
   }
 
   showHelp(): void {
@@ -128,30 +193,65 @@ export class Game {
   }
 
   private hideOverlay(): void {
-    document.getElementById("overlay")!.classList.add("hidden");
+    const overlay = document.getElementById("overlay")!;
+    overlay.classList.add("hidden");
+    overlay.onclick = null;
   }
 
-  startNewGame(): void {
+  startNewGame(withTutorial: boolean): void {
     this.hideOverlay();
-    this.currentFloor = 1;
     this.state = "playing";
-    this.messages = ["目を覚ますと、薄暗い迷宮の中だった..."];
+
+    if (withTutorial) {
+      this.currentFloor = 0;
+      this.tutorial = new TutorialManager(true);
+      this.messages = [];
+    } else {
+      this.currentFloor = 1;
+      this.tutorial = null;
+      this.messages = ["迷宮に足を踏み入れた..."];
+    }
+
     this.player = new Player(this);
     this.generateFloor();
     this.render();
+
+    // Show first tutorial step immediately
+    if (this.tutorial) {
+      this.tutorial.check(this);
+      if (this.tutorial.pendingDialog) {
+        this.showTutorialDialog();
+      }
+    }
   }
 
   generateFloor(): void {
     this.dungeon = new Dungeon(this, this.currentFloor);
-    this.dungeon.generate();
+    if (this.currentFloor === 0) {
+      this.dungeon.generateTutorial();
+    } else {
+      this.dungeon.generate();
+    }
     this.player.placeOnMap(this.dungeon.startX, this.dungeon.startY);
     this.enemies = spawnEnemies(this, this.currentFloor);
     this.items = spawnItems(this, this.currentFloor);
     this.player.computeFOV();
-    this.addMessage(`--- ${this.currentFloor}階 ---`);
+    if (this.currentFloor > 0) {
+      this.addMessage(`--- ${this.currentFloor}階 ---`);
+    }
   }
 
   nextFloor(): void {
+    if (this.currentFloor === 0) {
+      // Leaving tutorial
+      this.markTutorialDone();
+      this.tutorial = null;
+      this.currentFloor = 1;
+      this.addMessage("本当の迷宮が始まる...");
+      this.generateFloor();
+      this.render();
+      return;
+    }
     if (this.currentFloor >= TOTAL_FLOORS) {
       this.state = "win";
       this.addMessage("地上への出口を見つけた！脱出成功！");
@@ -191,6 +291,34 @@ export class Game {
 
   render(): void {
     this.display.render(this);
+
+    // Check tutorial triggers after render
+    if (this.tutorial?.active && !this.tutorial.pendingDialog) {
+      this.tutorial.check(this);
+      if (this.tutorial.pendingDialog) {
+        this.showTutorialDialog();
+      }
+    }
+  }
+
+  showTutorialDialog(): void {
+    if (!this.tutorial?.pendingDialog) return;
+    const step = this.tutorial.pendingDialog;
+    const overlay = document.getElementById("overlay")!;
+    overlay.classList.remove("hidden");
+
+    const text = step.message.replace(/\n/g, "<br>");
+    overlay.innerHTML = `
+      <div class="tutorial-dialog">
+        <p>${text}</p>
+        <button class="menu-btn" id="btn-tutorial-ok">了解</button>
+      </div>
+    `;
+    document.getElementById("btn-tutorial-ok")!.addEventListener("click", () => {
+      this.tutorial!.advance(this);
+      this.hideOverlay();
+      this.render();
+    });
   }
 
   gameOver(): void {

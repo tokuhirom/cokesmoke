@@ -98,6 +98,13 @@ export function spawnItems(game: Game, floor: number): ItemInstance[] {
     return true;
   });
 
+  // Tutorial floor: hand-placed items
+  if (floor === 0) {
+    items.push(new ItemInstance(13, 5, ITEM_DEFS[0])); // Torch in item room
+    items.push(new ItemInstance(12, 4, ITEM_DEFS[5])); // Potion in item room
+    return items;
+  }
+
   const count = 5 + floor;
   for (let i = 0; i < Math.min(count, floorTiles.length); i++) {
     const idx = Math.floor(ROT.RNG.getUniform() * floorTiles.length);

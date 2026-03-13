@@ -130,7 +130,7 @@ export class Display {
     el.innerHTML =
       `<span class="hp-color">HP:${hpBar} ${p.hp}/${p.maxHp}</span>  ` +
       `<span class="fuel-color">松明:${p.fuel}</span>  ` +
-      `<span class="floor-color">${game.currentFloor}F</span>${armorStr}<br>` +
+      `<span class="floor-color">${game.currentFloor === 0 ? "Tutorial" : `${game.currentFloor}F`}</span>${armorStr}<br>` +
       `<span class="sp-color">MP:[${spBar}] ${p.sp}/${p.maxSp}</span>`;
   }
 

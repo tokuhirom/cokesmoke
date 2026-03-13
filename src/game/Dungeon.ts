@@ -118,6 +118,62 @@ export class Dungeon {
     }
   }
 
+  generateTutorial(): void {
+    // Small hand-crafted map for tutorial
+    // Layout: start room -> corridor -> item room -> corridor -> enemy room -> corridor -> stairs room
+    const W = MAP_WIDTH;
+    const H = MAP_HEIGHT;
+
+    // Fill with walls
+    for (let x = 0; x < W; x++) {
+      for (let y = 0; y < H; y++) {
+        this.tiles.set(Dungeon.key(x, y), {
+          char: "\u2588",
+          walkable: false,
+          transparent: false,
+          explored: false,
+        });
+      }
+    }
+
+    const floor = (x: number, y: number, ch = " ") => {
+      this.tiles.set(Dungeon.key(x, y), {
+        char: ch,
+        walkable: true,
+        transparent: true,
+        explored: false,
+      });
+    };
+
+    // Room 1: Start (5x4 at position 2,3)
+    for (let x = 2; x <= 6; x++) for (let y = 3; y <= 6; y++) floor(x, y);
+    this.startX = 4;
+    this.startY = 5;
+
+    // Corridor 1: horizontal
+    for (let x = 7; x <= 10; x++) floor(x, 5);
+
+    // Room 2: Item room (5x4 at 11,3)
+    for (let x = 11; x <= 15; x++) for (let y = 3; y <= 6; y++) floor(x, y);
+    // Magic circle in this room
+    floor(13, 4, "\u2261");
+
+    // Corridor 2: horizontal
+    for (let x = 16; x <= 19; x++) floor(x, 5);
+
+    // Room 3: Enemy room (5x5 at 20,3)
+    for (let x = 20; x <= 24; x++) for (let y = 3; y <= 7; y++) floor(x, y);
+
+    // Corridor 3: horizontal
+    for (let x = 25; x <= 28; x++) floor(x, 5);
+
+    // Room 4: Stairs room (5x4 at 29,3)
+    for (let x = 29; x <= 33; x++) for (let y = 3; y <= 6; y++) floor(x, y);
+    this.stairsX = 31;
+    this.stairsY = 5;
+    floor(this.stairsX, this.stairsY, ">");
+  }
+
   getFloorTiles(): [number, number][] {
     const result: [number, number][] = [];
     this.tiles.forEach((tile, key) => {
