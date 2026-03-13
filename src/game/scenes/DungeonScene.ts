@@ -91,7 +91,7 @@ export class DungeonScene implements Scene {
     }
     game.player.placeOnMap(this.dungeon.startX, this.dungeon.startY);
     this.enemies = spawnEnemies(game, this.currentFloor, this.dungeonDef);
-    this.items = spawnItems(game, this.currentFloor);
+    this.items = spawnItems(game, this.currentFloor, this.dungeonDef.id);
     this.computePlayerFOV(game);
     if (this.currentFloor > 0) {
       game.addMessage(`--- ${this.dungeonDef.name} ${this.currentFloor}階 ---`);
@@ -326,11 +326,14 @@ export class DungeonScene implements Scene {
       ? "Tutorial"
       : `${this.dungeonDef.name} ${this.currentFloor}F`;
 
+    const weaponStr = p.weapon ? ` <span style="color:#ffaa44">${p.weapon.name}</span>` : "";
+
     return (
       `<span class="hp-color">HP:${hpBar} ${p.hp}/${p.maxHp}</span>  ` +
       `<span class="fuel-color">松明:${p.fuel}</span>  ` +
-      `<span class="floor-color">${floorLabel}</span>${armorStr}<br>` +
-      `<span class="sp-color">MP:[${spBar}] ${p.sp}/${p.maxSp}</span>`
+      `<span class="floor-color">${floorLabel}</span>${armorStr}${weaponStr}<br>` +
+      `<span class="sp-color">MP:[${spBar}] ${p.sp}/${p.maxSp}</span>` +
+      `  ATK:${p.attack} DEF:${p.defense}`
     );
   }
 }

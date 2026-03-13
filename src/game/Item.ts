@@ -1,6 +1,7 @@
 import * as ROT from "rot-js";
 import type { Game } from "./Game";
 import { SKILL_DEFS } from "./Skill";
+import { MATERIAL_DEFS } from "./Equipment";
 
 export interface ItemDef {
   char: string;
@@ -24,8 +25,9 @@ export const ITEM_DEFS: ItemDef[] = [
     name: "魔法書",
     description: "MP上限+20",
     effect: (game) => {
-      game.player.maxSp += 20;
+      game.player.baseSp += 20;
       game.player.sp += 20;
+      game.player.recalcStats();
       game.addMessage("魔法書を読んだ！MP上限+20");
     },
   },
@@ -34,7 +36,8 @@ export const ITEM_DEFS: ItemDef[] = [
     name: "剣",
     description: "攻撃力+3",
     effect: (game) => {
-      game.player.attack += 3;
+      game.player.baseAttack += 3;
+      game.player.recalcStats();
       game.addMessage("剣を手に入れた！攻撃力+3");
     },
   },
@@ -43,7 +46,8 @@ export const ITEM_DEFS: ItemDef[] = [
     name: "鎧",
     description: "防御力+2",
     effect: (game) => {
-      game.player.defense += 2;
+      game.player.baseDefense += 2;
+      game.player.recalcStats();
       game.addMessage("鎧を装備した！防御力+2");
     },
   },
@@ -89,12 +93,27 @@ export class ItemInstance {
   }
 }
 
-export function spawnItems(game: Game, floor: number): ItemInstance[] {
+function makeMaterialItem(materialId: string, materialName: string, char: string): ItemDef {
+  return {
+    char,
+    name: materialName,
+    description: "素材",
+    effect: (game) => {
+      game.player.addMaterial(materialId);
+      game.addMessage(`${materialName}を拾った！`);
+    },
+  };
+}
+
+export function spawnItems(game: Game, floor: number, dungeonId?: string): ItemInstance[] {
   const items: ItemInstance[] = [];
-  const floorTiles = game.dungeon.getFloorTiles().filter(([x, y]) => {
-    if (x === game.dungeon.startX && y === game.dungeon.startY) return false;
-    if (x === game.dungeon.stairsX && y === game.dungeon.stairsY) return false;
-    if (game.enemies.some((e) => e.x === x && e.y === y)) return false;
+  const scene = game.dungeonScene;
+  if (!scene) return items;
+
+  const floorTiles = scene.dungeon.getFloorTiles().filter(([x, y]) => {
+    if (x === scene.dungeon.startX && y === scene.dungeon.startY) return false;
+    if (x === scene.dungeon.stairsX && y === scene.dungeon.stairsY) return false;
+    if (scene.enemies.some((e) => e.x === x && e.y === y)) return false;
     return true;
   });
 
@@ -112,14 +131,33 @@ export function spawnItems(game: Game, floor: number): ItemInstance[] {
     floorTiles.splice(idx, 1);
 
     // Weight torches heavily so light doesn't run out
-    let defIdx: number;
-    if (ROT.RNG.getUniform() < 0.5) {
-      defIdx = 0; // torch
+    let def: ItemDef;
+    const roll = ROT.RNG.getUniform();
+    if (roll < 0.4) {
+      def = ITEM_DEFS[0]; // torch
+    } else if (roll < 0.7) {
+      // Regular item
+      const defIdx = Math.floor(ROT.RNG.getUniform() * ITEM_DEFS.length);
+      def = ITEM_DEFS[defIdx];
     } else {
-      defIdx = Math.floor(ROT.RNG.getUniform() * ITEM_DEFS.length);
+      // Material drop based on dungeon
+      const availableMats = MATERIAL_DEFS.filter(
+        (m) => !dungeonId || m.dungeons.includes(dungeonId),
+      );
+      if (availableMats.length > 0) {
+        // Pick based on rarity
+        const mat = availableMats[Math.floor(ROT.RNG.getUniform() * availableMats.length)];
+        if (ROT.RNG.getUniform() < mat.rarity) {
+          def = makeMaterialItem(mat.id, mat.name, mat.char);
+        } else {
+          def = ITEM_DEFS[0]; // fallback torch
+        }
+      } else {
+        def = ITEM_DEFS[Math.floor(ROT.RNG.getUniform() * ITEM_DEFS.length)];
+      }
     }
 
-    items.push(new ItemInstance(x, y, ITEM_DEFS[defIdx]));
+    items.push(new ItemInstance(x, y, def));
   }
 
   return items;

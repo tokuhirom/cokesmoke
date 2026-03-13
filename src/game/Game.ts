@@ -7,6 +7,7 @@ import type { Scene } from "./scenes/Scene";
 import { DungeonScene, DUNGEON_DEFS } from "./scenes/DungeonScene";
 import { WorldScene } from "./scenes/WorldScene";
 import { TownScene, TOWN_DEFS } from "./scenes/TownScene";
+import type { NpcDef } from "./scenes/TownScene";
 
 export type GameState =
   | "title"
@@ -40,6 +41,9 @@ export class Game {
   worldScene!: WorldScene;
   dungeonScene: DungeonScene | null = null;
   private townScene: TownScene | null = null;
+
+  // Recruited NPCs that settle in starting village
+  recruitedNpcs: NpcDef[] = [];
 
   // For backward compat with Player/Enemy that reference game.dungeon
   get dungeon() {
@@ -201,6 +205,7 @@ export class Game {
   startNewGame(withTutorial: boolean): void {
     this.hideOverlay();
     this.companion = null;
+    this.recruitedNpcs = [];
 
     this.player = new Player(this);
 
@@ -299,6 +304,12 @@ export class Game {
     if (!this.companion) {
       this.companion = new Companion(this);
     }
+  }
+
+  recruitNpc(npc: NpcDef): void {
+    if (this.recruitedNpcs.some((n) => n.name === npc.name)) return;
+    this.recruitedNpcs.push(npc);
+    this.addMessage(`${npc.name}が始まりの村に移住した！`);
   }
 
   // Backward compat methods used by Enemy/Skill/Tutorial

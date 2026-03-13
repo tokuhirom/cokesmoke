@@ -2,6 +2,7 @@ import type * as ROT from "rot-js";
 import type { Scene } from "./Scene";
 import type { Game } from "../Game";
 import { MAP_WIDTH, MAP_HEIGHT, COLOR_PLAYER } from "../../constants";
+import { CRAFT_RECIPES, EQUIPMENT_DEFS, MATERIAL_DEFS, type CraftRecipe } from "../Equipment";
 
 export interface NpcDef {
   char: string;
@@ -10,13 +11,8 @@ export interface NpcDef {
   x: number;
   y: number;
   dialog: string[];
+  crafterId?: string; // if this NPC can craft
   onInteract?: (game: Game) => void;
-}
-
-export interface ShopItem {
-  name: string;
-  description: string;
-  effect: (game: Game) => void;
 }
 
 export interface TownDef {
@@ -26,7 +22,6 @@ export interface TownDef {
   width: number;
   height: number;
   npcs: NpcDef[];
-  shopItems: ShopItem[];
   layout: string[];
   startX: number;
   startY: number;
@@ -52,6 +47,15 @@ function makeTownLayout(): string[] {
   ];
 }
 
+// Positions for recruited NPCs in the starting village
+const RECRUIT_POSITIONS: [number, number][] = [
+  [18, 3],
+  [18, 5],
+  [20, 8],
+  [6, 8],
+  [14, 11],
+];
+
 export const TOWN_DEFS: TownDef[] = [
   {
     id: "home",
@@ -62,7 +66,6 @@ export const TOWN_DEFS: TownDef[] = [
     startX: 12,
     startY: 13,
     layout: makeTownLayout(),
-    shopItems: [],
     npcs: [
       {
         char: "V",
@@ -72,8 +75,8 @@ export const TOWN_DEFS: TownDef[] = [
         y: 8,
         dialog: [
           "ようこそ、転生者よ。ここは始まりの村だ。",
+          "各地の街で出会った職人が移住してくれることがある。",
           "南の出口(E)からワールドマップに出られる。",
-          "近くの迷宮で力をつけるといい。",
         ],
       },
       {
@@ -98,16 +101,6 @@ export const TOWN_DEFS: TownDef[] = [
     startX: 12,
     startY: 13,
     layout: makeTownLayout(),
-    shopItems: [
-      {
-        name: "竜鱗の鎧",
-        description: "防御+5",
-        effect: (game) => {
-          game.player.defense += 5;
-          game.addMessage("竜鱗の鎧を装備した！防御力+5");
-        },
-      },
-    ],
     npcs: [
       {
         char: "L",
@@ -146,25 +139,6 @@ export const TOWN_DEFS: TownDef[] = [
     startX: 12,
     startY: 13,
     layout: makeTownLayout(),
-    shopItems: [
-      {
-        name: "精霊の魔法書",
-        description: "MP上限+30",
-        effect: (game) => {
-          game.player.maxSp += 30;
-          game.player.sp += 30;
-          game.addMessage("精霊の魔法書を読んだ！MP上限+30");
-        },
-      },
-      {
-        name: "エルフの霊薬",
-        description: "HP全回復",
-        effect: (game) => {
-          game.player.hp = game.player.maxHp;
-          game.addMessage("エルフの霊薬を飲んだ！HP全回復");
-        },
-      },
-    ],
     npcs: [
       {
         char: "Q",
@@ -175,16 +149,35 @@ export const TOWN_DEFS: TownDef[] = [
         dialog: [
           "...人間がここまで来るとは珍しい。",
           "私はこの森の守り手。エルフの女王よ。",
-          "あなたに力を貸しましょう。店を見てゆきなさい。",
+          "エリーナを連れて行くといい。村の役に立つだろう。",
         ],
       },
       {
         char: "S",
-        name: "エルフの賢者",
+        name: "エリーナ",
         color: "#88ffaa",
         x: 4,
         y: 3,
-        dialog: ["我らエルフは魔法に長けている。", "魔法書をお求めならこの里がよかろう。"],
+        dialog: [
+          "私はエリーナ。精霊魔法の使い手よ。",
+          "素材を持ってきてくれれば、魔法の装備を作れるわ。",
+          "あなたの村に行ってもいいかしら？",
+        ],
+        crafterId: "elf_enchanter",
+        onInteract: (game: Game) => {
+          if (!game.recruitedNpcs.some((n) => n.crafterId === "elf_enchanter")) {
+            const npcDef: NpcDef = {
+              char: "S",
+              name: "エリーナ",
+              color: "#88ffaa",
+              x: 0,
+              y: 0,
+              dialog: ["素材を持ってきたのね。", "精霊の力を込めて、装備を作ってあげるわ。"],
+              crafterId: "elf_enchanter",
+            };
+            game.recruitNpc(npcDef);
+          }
+        },
       },
     ],
   },
@@ -197,32 +190,6 @@ export const TOWN_DEFS: TownDef[] = [
     startX: 12,
     startY: 13,
     layout: makeTownLayout(),
-    shopItems: [
-      {
-        name: "ミスリルの剣",
-        description: "攻撃力+8",
-        effect: (game) => {
-          game.player.attack += 8;
-          game.addMessage("ミスリルの剣を手に入れた！攻撃力+8");
-        },
-      },
-      {
-        name: "アダマンタイトの鎧",
-        description: "防御力+8",
-        effect: (game) => {
-          game.player.defense += 8;
-          game.addMessage("アダマンタイトの鎧を装備した！防御力+8");
-        },
-      },
-      {
-        name: "ドワーフの大たいまつ",
-        description: "明かり+200",
-        effect: (game) => {
-          game.player.fuel += 200;
-          game.addMessage("ドワーフの大たいまつ！明かり+200");
-        },
-      },
-    ],
     npcs: [
       {
         char: "K",
@@ -233,20 +200,34 @@ export const TOWN_DEFS: TownDef[] = [
         dialog: [
           "ガハハ！よう来たな、冒険者！",
           "ワシはこの砦の鍛冶王だ。",
-          "最高の武器と防具がほしけりゃ、店を見てけ！",
+          "ボルドを連れてけ！おまえの村で鍛冶屋をやらせろ！",
         ],
       },
       {
         char: "W",
-        name: "武器屋",
+        name: "ボルド",
         color: "#ffaa44",
         x: 16,
         y: 4,
-        dialog: ["いらっしゃい！ドワーフ製の武具は一級品だぜ。"],
+        dialog: [
+          "オレはボルド。ドワーフの鍛冶師だ。",
+          "素材さえあれば最高の武具を打ってやるぜ！",
+          "おまえの村に工房を構えてもいいぞ。",
+        ],
+        crafterId: "dwarf_smith",
         onInteract: (game: Game) => {
-          // Open shop
-          const townScene = game.currentScene as TownScene;
-          townScene.openShop(game);
+          if (!game.recruitedNpcs.some((n) => n.crafterId === "dwarf_smith")) {
+            const npcDef: NpcDef = {
+              char: "W",
+              name: "ボルド",
+              color: "#ffaa44",
+              x: 0,
+              y: 0,
+              dialog: ["おう！素材を持ってきたか？", "最高の武具を打ってやるぜ！"],
+              crafterId: "dwarf_smith",
+            };
+            game.recruitNpc(npcDef);
+          }
         },
       },
     ],
@@ -263,6 +244,7 @@ export class TownScene implements Scene {
   tiles: TownTile[][] = [];
   dialogQueue: string[] = [];
   showingDialog = false;
+  private activeNpcs: NpcDef[] = [];
 
   constructor(townDef: TownDef) {
     this.townDef = townDef;
@@ -270,9 +252,25 @@ export class TownScene implements Scene {
 
   onEnter(game: Game): void {
     this.parseTiles();
+    this.buildNpcList(game);
     game.player.placeOnMap(this.townDef.startX, this.townDef.startY);
     game.player.visibleTiles.clear();
     game.addMessage(`${this.townDef.name}に入った`);
+  }
+
+  private buildNpcList(game: Game): void {
+    this.activeNpcs = [...this.townDef.npcs];
+
+    // Add recruited NPCs to starting village
+    if (this.townDef.id === "home") {
+      for (let i = 0; i < game.recruitedNpcs.length; i++) {
+        const npc = { ...game.recruitedNpcs[i] };
+        const pos = RECRUIT_POSITIONS[i % RECRUIT_POSITIONS.length];
+        npc.x = pos[0];
+        npc.y = pos[1];
+        this.activeNpcs.push(npc);
+      }
+    }
   }
 
   private parseTiles(): void {
@@ -299,9 +297,9 @@ export class TownScene implements Scene {
     if (nx < 0 || nx >= this.townDef.width || ny < 0 || ny >= this.townDef.height) return false;
 
     // Check NPC collision
-    const npc = this.townDef.npcs.find((n) => n.x === nx && n.y === ny);
+    const npc = this.activeNpcs.find((n) => n.x === nx && n.y === ny);
     if (npc) {
-      this.startDialog(game, npc);
+      this.interactWithNpc(game, npc);
       return true;
     }
 
@@ -318,7 +316,14 @@ export class TownScene implements Scene {
     return true;
   }
 
-  private startDialog(game: Game, npc: NpcDef): void {
+  private interactWithNpc(game: Game, npc: NpcDef): void {
+    // If this NPC is a crafter in the starting village, show craft menu
+    if (npc.crafterId && this.townDef.id === "home") {
+      this.openCraftMenu(game, npc);
+      return;
+    }
+
+    // Normal dialog
     this.dialogQueue = [...npc.dialog];
     this.showingDialog = true;
     this.showNextDialog(game);
@@ -351,38 +356,89 @@ export class TownScene implements Scene {
     });
   }
 
-  openShop(game: Game): void {
-    if (this.townDef.shopItems.length === 0) {
-      game.addMessage("まだ商品がないようだ...");
-      return;
-    }
+  private openCraftMenu(game: Game, npc: NpcDef): void {
+    const recipes = CRAFT_RECIPES.filter((r) => r.crafterId === npc.crafterId);
+    if (recipes.length === 0) return;
 
     this.showingDialog = true;
     const overlay = document.getElementById("overlay")!;
     overlay.classList.remove("hidden");
 
-    let html = '<div class="tutorial-dialog"><p>何を買う？</p>';
-    for (let i = 0; i < this.townDef.shopItems.length; i++) {
-      const item = this.townDef.shopItems[i];
-      html += `<button class="menu-btn" id="shop-item-${i}">${item.name} (${item.description})</button>`;
+    const p = game.player;
+    let html = `<div class="tutorial-dialog"><p>${npc.name}の工房</p>`;
+
+    // Show materials inventory
+    html += '<p style="font-size:11px;color:#aaa;margin:8px 0">';
+    html += "所持素材: ";
+    if (p.materials.size === 0) {
+      html += "なし";
+    } else {
+      const matStrs: string[] = [];
+      for (const [matId, count] of p.materials) {
+        const matDef = MATERIAL_DEFS.find((m) => m.id === matId);
+        if (matDef) matStrs.push(`${matDef.name}x${count}`);
+      }
+      html += matStrs.join(", ");
     }
-    html += '<button class="menu-btn secondary" id="shop-close">やめる</button></div>';
+    html += "</p>";
+
+    for (let i = 0; i < recipes.length; i++) {
+      const recipe = recipes[i];
+      const eqDef = EQUIPMENT_DEFS[recipe.resultEquipment];
+      const canCraft = this.canCraft(game, recipe);
+      const matStr = recipe.materials
+        .map((m) => {
+          const mat = MATERIAL_DEFS.find((md) => md.id === m.materialId);
+          const have = p.getMaterialCount(m.materialId);
+          const color = have >= m.count ? "#44ff88" : "#ff4444";
+          return `<span style="color:${color}">${mat?.name ?? m.materialId}${have}/${m.count}</span>`;
+        })
+        .join(" ");
+
+      html += `<button class="menu-btn${canCraft ? "" : " secondary"}" id="craft-${i}" ${canCraft ? "" : "disabled"}>`;
+      html += `${eqDef?.name ?? recipe.name} (${eqDef?.description ?? ""})`;
+      html += `<br><span style="font-size:10px">${matStr}</span>`;
+      html += "</button>";
+    }
+
+    html += '<button class="menu-btn secondary" id="craft-close">閉じる</button></div>';
     overlay.innerHTML = html;
 
-    for (let i = 0; i < this.townDef.shopItems.length; i++) {
-      const item = this.townDef.shopItems[i];
-      document.getElementById(`shop-item-${i}`)!.addEventListener("click", () => {
-        item.effect(game);
-        this.showingDialog = false;
-        overlay.classList.add("hidden");
-        game.render();
+    for (let i = 0; i < recipes.length; i++) {
+      const btn = document.getElementById(`craft-${i}`);
+      if (!btn) continue;
+      const recipe = recipes[i];
+      btn.addEventListener("click", () => {
+        this.doCraft(game, recipe, npc);
       });
     }
-    document.getElementById("shop-close")!.addEventListener("click", () => {
+    document.getElementById("craft-close")!.addEventListener("click", () => {
       this.showingDialog = false;
       overlay.classList.add("hidden");
       game.render();
     });
+  }
+
+  private canCraft(game: Game, recipe: CraftRecipe): boolean {
+    return recipe.materials.every((m) => game.player.getMaterialCount(m.materialId) >= m.count);
+  }
+
+  private doCraft(game: Game, recipe: CraftRecipe, npc: NpcDef): void {
+    if (!this.canCraft(game, recipe)) return;
+
+    // Consume materials
+    for (const m of recipe.materials) {
+      game.player.removeMaterial(m.materialId, m.count);
+    }
+
+    // Equip result
+    const eqDef = EQUIPMENT_DEFS[recipe.resultEquipment];
+    if (eqDef) {
+      game.player.equip(eqDef);
+    }
+
+    // Refresh craft menu
+    this.openCraftMenu(game, npc);
   }
 
   onWait(_game: Game): void {
@@ -436,8 +492,8 @@ export class TownScene implements Scene {
       }
     }
 
-    // Draw NPCs
-    for (const npc of this.townDef.npcs) {
+    // Draw NPCs (including recruited ones)
+    for (const npc of this.activeNpcs) {
       display.draw(offX + npc.x, offY + npc.y, npc.char, npc.color, raceColors.bg);
     }
 
@@ -465,7 +521,7 @@ export class TownScene implements Scene {
     }
   }
 
-  getStatusHTML(_game: Game): string {
+  getStatusHTML(game: Game): string {
     const raceLabel: Record<string, string> = {
       human: "人間",
       lizard: "竜人",
@@ -473,6 +529,13 @@ export class TownScene implements Scene {
       dwarf: "ドワーフ",
     };
     const race = raceLabel[this.townDef.race] ?? "";
-    return `<span class="floor-color">${this.townDef.name}</span>  <span style="color:#666">${race}の街 - NPCに話しかけてみよう</span>`;
+
+    // Show equipment in status for home town
+    let extra = "";
+    if (this.townDef.id === "home" && game.recruitedNpcs.length > 0) {
+      extra = ` 住人:${game.recruitedNpcs.length + 2}`;
+    }
+
+    return `<span class="floor-color">${this.townDef.name}</span>  <span style="color:#666">${race}の街${extra}</span>`;
   }
 }
