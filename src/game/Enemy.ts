@@ -51,10 +51,10 @@ export class Enemy extends Entity {
       return;
     }
 
-    // Adjacent to player? Attack
+    // Adjacent to player? Attack (4-direction only, same as player)
     const dx = Math.abs(player.x - this.x);
     const dy = Math.abs(player.y - this.y);
-    if (dx <= 1 && dy <= 1 && dx + dy > 0) {
+    if (dx + dy === 1) {
       this.attackPlayer();
       return;
     }
