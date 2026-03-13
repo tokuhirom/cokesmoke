@@ -1,6 +1,7 @@
 import * as ROT from "rot-js";
 import { Entity } from "./Entity";
 import type { Game } from "./Game";
+import type { SkillDef } from "./Skill";
 import {
   PLAYER_INITIAL_HP,
   PLAYER_INITIAL_SP,
@@ -16,6 +17,10 @@ export class Player extends Entity {
   maxSp: number;
   fuel: number;
   visibleTiles: Set<string> = new Set();
+  skills: SkillDef[] = [];
+  armorTurns = 0;
+  lastDx = 0;
+  lastDy = 1;
 
   constructor(game: Game) {
     super(game, "@", COLOR_PLAYER, "探索者", PLAYER_INITIAL_HP, 10, 2);
@@ -44,9 +49,20 @@ export class Player extends Entity {
     });
   }
 
+  override takeDamage(amount: number): number {
+    if (this.armorTurns > 0) {
+      this.game.addMessage("装甲が攻撃を弾いた！");
+      return 0;
+    }
+    return super.takeDamage(amount);
+  }
+
   tryMove(dx: number, dy: number): boolean {
     const nx = this.x + dx;
     const ny = this.y + dy;
+
+    this.lastDx = dx;
+    this.lastDy = dy;
 
     if (!this.game.dungeon.isWalkable(nx, ny)) return false;
 
@@ -80,6 +96,9 @@ export class Player extends Entity {
   }
 
   endTurn(): void {
+    // Armor countdown
+    if (this.armorTurns > 0) this.armorTurns--;
+
     // Fuel consumption
     this.fuel -= FUEL_COST_PER_TURN;
     if (this.fuel <= 0) {
@@ -116,5 +135,19 @@ export class Player extends Entity {
       return true;
     }
     return false;
+  }
+
+  learnSkill(skill: SkillDef): boolean {
+    if (this.skills.length >= 3) {
+      this.game.addMessage("スキルスロットがいっぱいだ！");
+      return false;
+    }
+    if (this.skills.some((s) => s.name === skill.name)) {
+      this.game.addMessage("すでに習得済みのスキルだ");
+      return false;
+    }
+    this.skills.push(skill);
+    this.game.addMessage(`スキル「${skill.name}」を習得した！`);
+    return true;
   }
 }

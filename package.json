@@ -7,7 +7,7 @@
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "lint": "oxlint src/",
+    "lint": "oxlint -c .oxlintrc.json src/",
     "fmt": "oxfmt --write src/",
     "fmt:check": "oxfmt --check src/",
     "prepare": "husky"

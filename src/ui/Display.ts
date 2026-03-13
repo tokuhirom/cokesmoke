@@ -35,6 +35,7 @@ export class Display {
     this.renderMap(game);
     this.renderStatusBar(game);
     this.renderMessages(game);
+    game.input.updateSkillButtons();
   }
 
   private renderMap(game: Game): void {

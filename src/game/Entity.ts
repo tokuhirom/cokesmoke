@@ -12,7 +12,15 @@ export class Entity {
   defense: number;
   game: Game;
 
-  constructor(game: Game, char: string, color: string, name: string, hp: number, attack: number, defense: number) {
+  constructor(
+    game: Game,
+    char: string,
+    color: string,
+    name: string,
+    hp: number,
+    attack: number,
+    defense: number,
+  ) {
     this.game = game;
     this.char = char;
     this.color = color;

@@ -1,5 +1,6 @@
 import * as ROT from "rot-js";
 import type { Game } from "./Game";
+import { SKILL_DEFS } from "./Skill";
 
 export interface ItemDef {
   char: string;
@@ -62,6 +63,15 @@ export const ITEM_DEFS: ItemDef[] = [
     effect: (game) => {
       game.player.hp = Math.min(game.player.maxHp, game.player.hp + 25);
       game.addMessage("修理キットでHP+25回復！");
+    },
+  },
+  {
+    char: "?",
+    name: "設計図",
+    description: "ランダムスキル習得",
+    effect: (game) => {
+      const idx = Math.floor(ROT.RNG.getUniform() * SKILL_DEFS.length);
+      game.player.learnSkill(SKILL_DEFS[idx]);
     },
   },
 ];

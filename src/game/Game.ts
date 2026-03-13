@@ -57,7 +57,7 @@ export class Game {
   }
 
   pickupItem(x: number, y: number): void {
-    const item = this.items.find(i => !i.picked && i.x === x && i.y === y);
+    const item = this.items.find((i) => !i.picked && i.x === x && i.y === y);
     if (item) {
       item.picked = true;
       item.def.effect(this);
@@ -65,7 +65,7 @@ export class Game {
   }
 
   getEnemyAt(x: number, y: number): Enemy | undefined {
-    return this.enemies.find(e => e.isAlive() && e.x === x && e.y === y);
+    return this.enemies.find((e) => e.isAlive() && e.x === x && e.y === y);
   }
 
   processEnemyTurns(): void {
