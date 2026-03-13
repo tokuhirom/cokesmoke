@@ -12,62 +12,62 @@ export interface ItemDef {
 export const ITEM_DEFS: ItemDef[] = [
   {
     char: "\u2666",
-    name: "石炭袋",
-    description: "燃料+50",
+    name: "たいまつ",
+    description: "明かり+50",
     effect: (game) => {
       game.player.fuel += 50;
-      game.addMessage("石炭袋を拾った！燃料+50");
+      game.addMessage("たいまつを拾った！明かり+50");
     },
   },
   {
     char: "!",
-    name: "圧力弁",
-    description: "SP上限+20",
+    name: "魔法書",
+    description: "MP上限+20",
     effect: (game) => {
       game.player.maxSp += 20;
       game.player.sp += 20;
-      game.addMessage("圧力弁を装着！SP上限+20");
+      game.addMessage("魔法書を読んだ！MP上限+20");
     },
   },
   {
     char: "/",
-    name: "蒸気ランス",
+    name: "剣",
     description: "攻撃力+3",
     effect: (game) => {
       game.player.attack += 3;
-      game.addMessage("蒸気ランスを装備！攻撃力+3");
+      game.addMessage("剣を手に入れた！攻撃力+3");
     },
   },
   {
     char: "[",
-    name: "鉄板鎧",
+    name: "鎧",
     description: "防御力+2",
     effect: (game) => {
       game.player.defense += 2;
-      game.addMessage("鉄板鎧を装着！防御力+2");
+      game.addMessage("鎧を装備した！防御力+2");
     },
   },
   {
     char: "~",
-    name: "潤滑油",
-    description: "SP全回復",
+    name: "エリクサー",
+    description: "MP全回復",
     effect: (game) => {
       game.player.sp = game.player.maxSp;
-      game.addMessage("潤滑油を使った！SP全回復");
+      game.addMessage("エリクサーを飲んだ！MP全回復");
     },
   },
   {
     char: "+",
-    name: "修理キット",
+    name: "回復薬",
     description: "HP+25",
     effect: (game) => {
       game.player.hp = Math.min(game.player.maxHp, game.player.hp + 25);
-      game.addMessage("修理キットでHP+25回復！");
+      game.addMessage("回復薬を飲んだ！HP+25");
     },
   },
   {
     char: "?",
-    name: "設計図",
+    name: "魔導書",
     description: "ランダムスキル習得",
     effect: (game) => {
       const idx = Math.floor(ROT.RNG.getUniform() * SKILL_DEFS.length);
@@ -94,22 +94,20 @@ export function spawnItems(game: Game, floor: number): ItemInstance[] {
   const floorTiles = game.dungeon.getFloorTiles().filter(([x, y]) => {
     if (x === game.dungeon.startX && y === game.dungeon.startY) return false;
     if (x === game.dungeon.stairsX && y === game.dungeon.stairsY) return false;
-    // Don't place on enemies
     if (game.enemies.some((e) => e.x === x && e.y === y)) return false;
     return true;
   });
 
-  // More items per floor to keep fuel sustainable
   const count = 5 + floor;
   for (let i = 0; i < Math.min(count, floorTiles.length); i++) {
     const idx = Math.floor(ROT.RNG.getUniform() * floorTiles.length);
     const [x, y] = floorTiles[idx];
     floorTiles.splice(idx, 1);
 
-    // Weight coal bags heavily so fuel doesn't run out
+    // Weight torches heavily so light doesn't run out
     let defIdx: number;
     if (ROT.RNG.getUniform() < 0.5) {
-      defIdx = 0; // coal bag
+      defIdx = 0; // torch
     } else {
       defIdx = Math.floor(ROT.RNG.getUniform() * ITEM_DEFS.length);
     }

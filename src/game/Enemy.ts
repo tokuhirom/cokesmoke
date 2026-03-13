@@ -14,18 +14,10 @@ export interface EnemyDef {
 }
 
 export const ENEMY_DEFS: Record<string, EnemyDef> = {
-  g: { char: "g", name: "ゴーレム兵", hp: 30, attack: 8, defense: 4, speed: 0.5, isBoss: false },
-  s: { char: "s", name: "蒸気スパイダー", hp: 12, attack: 5, defense: 1, speed: 2, isBoss: false },
-  B: {
-    char: "B",
-    name: "ボイラーブルート",
-    hp: 50,
-    attack: 12,
-    defense: 3,
-    speed: 1,
-    isBoss: false,
-  },
-  W: { char: "W", name: "霧の番人", hp: 100, attack: 15, defense: 6, speed: 1, isBoss: true },
+  g: { char: "g", name: "ゴブリン", hp: 30, attack: 8, defense: 4, speed: 0.5, isBoss: false },
+  s: { char: "s", name: "スライム", hp: 12, attack: 5, defense: 1, speed: 2, isBoss: false },
+  O: { char: "O", name: "オーク", hp: 50, attack: 12, defense: 3, speed: 1, isBoss: false },
+  D: { char: "D", name: "ドラゴン", hp: 100, attack: 15, defense: 6, speed: 1, isBoss: true },
 };
 
 export class Enemy extends Entity {
@@ -123,7 +115,7 @@ export function spawnEnemies(game: Game, floor: number): Enemy[] {
 
   // Pick enemy types based on floor
   const availableTypes: string[] = ["g", "s"];
-  if (floor >= 3) availableTypes.push("B");
+  if (floor >= 3) availableTypes.push("O");
 
   for (let i = 0; i < Math.min(count, floorTiles.length); i++) {
     const idx = Math.floor(ROT.RNG.getUniform() * floorTiles.length);
@@ -141,7 +133,7 @@ export function spawnEnemies(game: Game, floor: number): Enemy[] {
   if (floor === 5 || floor === 10) {
     const idx = Math.floor(ROT.RNG.getUniform() * floorTiles.length);
     const [x, y] = floorTiles[idx];
-    const boss = new Enemy(game, ENEMY_DEFS["W"]);
+    const boss = new Enemy(game, ENEMY_DEFS["D"]);
     boss.x = x;
     boss.y = y;
     boss.awakened = true;

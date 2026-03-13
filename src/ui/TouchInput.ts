@@ -228,7 +228,7 @@ export class TouchInput {
       if (!btn) continue;
       if (i < p.skills.length) {
         const skill = p.skills[i];
-        const cost = skill.spCost === "all" ? "全SP" : `${skill.spCost}SP`;
+        const cost = skill.spCost === "all" ? "全MP" : `${skill.spCost}MP`;
         btn.textContent = `${skill.name}(${cost})`;
         btn.disabled = false;
       } else {

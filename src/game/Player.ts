@@ -23,7 +23,7 @@ export class Player extends Entity {
   lastDy = 1;
 
   constructor(game: Game) {
-    super(game, "@", COLOR_PLAYER, "探索者", PLAYER_INITIAL_HP, 10, 2);
+    super(game, "@", COLOR_PLAYER, "転生者", PLAYER_INITIAL_HP, 10, 2);
     this.sp = PLAYER_INITIAL_SP;
     this.maxSp = PLAYER_INITIAL_SP;
     this.fuel = PLAYER_INITIAL_FUEL;
@@ -51,7 +51,7 @@ export class Player extends Entity {
 
   override takeDamage(amount: number): number {
     if (this.armorTurns > 0) {
-      this.game.addMessage("装甲が攻撃を弾いた！");
+      this.game.addMessage("バリアが攻撃を弾いた！");
       return 0;
     }
     return super.takeDamage(amount);
@@ -85,7 +85,7 @@ export class Player extends Entity {
   }
 
   private attackEnemy(enemy: Entity): void {
-    // SP bonus to attack: higher SP = more damage
+    // MP bonus to attack: higher MP = more damage
     const spBonus = Math.floor(this.sp / 20);
     const totalAtk = this.attack + spBonus;
     const dmg = enemy.takeDamage(totalAtk);
@@ -114,7 +114,7 @@ export class Player extends Entity {
     const tile = this.game.dungeon.getTile(this.x, this.y);
     if (tile && tile.char === "\u2261") {
       this.sp = Math.min(this.maxSp, this.sp + 5);
-      this.game.addMessage("蒸気管からSPを回復した");
+      this.game.addMessage("魔法陣からMPを回復した");
     }
 
     // Check stairs
