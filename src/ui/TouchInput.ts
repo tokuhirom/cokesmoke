@@ -19,8 +19,9 @@ export class TouchInput {
   }
 
   private doMove(dx: number, dy: number): void {
-    if (this.game.state !== "playing" || this.isInputBlocked()) return;
-    this.game.player.tryMove(dx, dy);
+    if (!this.game.isPlayable() || this.isInputBlocked()) return;
+    if (!this.game.currentScene) return;
+    this.game.currentScene.onMove(dx, dy, this.game);
     this.game.render();
   }
 
@@ -34,8 +35,8 @@ export class TouchInput {
 
       if (this.isInputBlocked()) return;
 
-      // Skill keys: 1, 2, 3
-      if (e.key >= "1" && e.key <= "3") {
+      // Skill keys: 1, 2, 3 (only in dungeon)
+      if (this.game.state === "dungeon" && e.key >= "1" && e.key <= "3") {
         const idx = parseInt(e.key) - 1;
         if (useSkill(this.game, idx)) {
           this.game.render();
@@ -47,7 +48,6 @@ export class TouchInput {
       let dx = 0,
         dy = 0;
       switch (e.key) {
-        // Cardinal
         case "ArrowUp":
         case "k":
           dy = -1;
@@ -64,7 +64,6 @@ export class TouchInput {
         case "l":
           dx = 1;
           break;
-        // Diagonal (vi-keys)
         case "y":
           dx = -1;
           dy = -1;
@@ -83,12 +82,17 @@ export class TouchInput {
           break;
         case ".":
         case "5":
-          this.game.player.endTurn();
-          this.game.render();
+          if (this.game.currentScene) {
+            this.game.currentScene.onWait(this.game);
+            this.game.render();
+          }
           return;
         case ">":
-          if (this.game.player.descend()) return;
-          break;
+          if (this.game.currentScene) {
+            this.game.currentScene.onDescend(this.game);
+            this.game.render();
+          }
+          return;
         default:
           return;
       }
@@ -115,7 +119,7 @@ export class TouchInput {
     );
 
     container.addEventListener("touchend", (e) => {
-      if (this.game.state !== "playing") {
+      if (!this.game.isPlayable()) {
         if (this.game.state === "gameover" || this.game.state === "win") {
           this.game.showTitle();
         }
@@ -127,12 +131,13 @@ export class TouchInput {
       const diffY = touch.clientY - this.startY;
 
       if (Math.abs(diffX) < MIN_SWIPE && Math.abs(diffY) < MIN_SWIPE) {
-        this.game.player.endTurn();
-        this.game.render();
+        if (this.game.currentScene) {
+          this.game.currentScene.onWait(this.game);
+          this.game.render();
+        }
         return;
       }
 
-      // 8-direction swipe: use angle to determine direction
       const angle = Math.atan2(diffY, diffX);
       const [dx, dy] = this.angleToDir(angle);
 
@@ -141,16 +146,15 @@ export class TouchInput {
   }
 
   private angleToDir(angle: number): [number, number] {
-    // angle from atan2(diffY, diffX): 0=right, PI/2=down, -PI/2=up
     const deg = (angle * 180) / Math.PI;
-    if (deg >= -22.5 && deg < 22.5) return [1, 0]; // right
-    if (deg >= 22.5 && deg < 67.5) return [1, 1]; // down-right
-    if (deg >= 67.5 && deg < 112.5) return [0, 1]; // down
-    if (deg >= 112.5 && deg < 157.5) return [-1, 1]; // down-left
-    if (deg >= 157.5 || deg < -157.5) return [-1, 0]; // left
-    if (deg >= -157.5 && deg < -112.5) return [-1, -1]; // up-left
-    if (deg >= -112.5 && deg < -67.5) return [0, -1]; // up
-    if (deg >= -67.5 && deg < -22.5) return [1, -1]; // up-right
+    if (deg >= -22.5 && deg < 22.5) return [1, 0];
+    if (deg >= 22.5 && deg < 67.5) return [1, 1];
+    if (deg >= 67.5 && deg < 112.5) return [0, 1];
+    if (deg >= 112.5 && deg < 157.5) return [-1, 1];
+    if (deg >= 157.5 || deg < -157.5) return [-1, 0];
+    if (deg >= -157.5 && deg < -112.5) return [-1, -1];
+    if (deg >= -112.5 && deg < -67.5) return [0, -1];
+    if (deg >= -67.5 && deg < -22.5) return [1, -1];
     return [0, 0];
   }
 
@@ -158,7 +162,6 @@ export class TouchInput {
     const dpad = document.getElementById("dpad")!;
     if (!dpad) return;
 
-    // 3x3 grid: [NW, N, NE, W, -, E, SW, S, SE]
     const dirs: [string, number, number][] = [
       ["\u2196", -1, -1],
       ["\u2191", 0, -1],
@@ -175,11 +178,12 @@ export class TouchInput {
       const btn = document.createElement("button");
       btn.textContent = label;
       if (dx === 0 && dy === 0) {
-        // Center = wait
         btn.addEventListener("click", () => {
-          if (this.game.state !== "playing") return;
-          this.game.player.endTurn();
-          this.game.render();
+          if (!this.game.isPlayable()) return;
+          if (this.game.currentScene) {
+            this.game.currentScene.onWait(this.game);
+            this.game.render();
+          }
         });
       } else {
         btn.addEventListener("click", () => this.doMove(dx, dy));
@@ -196,7 +200,7 @@ export class TouchInput {
       btn.id = `skill-btn-${i}`;
       btn.textContent = `[${i + 1}]---`;
       btn.addEventListener("click", () => {
-        if (this.game.state !== "playing") return;
+        if (this.game.state !== "dungeon") return;
         if (useSkill(this.game, i)) {
           this.game.render();
         }
@@ -207,12 +211,14 @@ export class TouchInput {
     const descendBtn = document.createElement("button");
     descendBtn.id = "descend-btn";
     descendBtn.className = "descend-btn";
-    descendBtn.textContent = "階段>";
+    descendBtn.textContent = "入る>";
     descendBtn.disabled = true;
     descendBtn.addEventListener("click", () => {
-      if (this.game.state !== "playing") return;
-      this.game.player.descend();
-      this.game.render();
+      if (!this.game.isPlayable()) return;
+      if (this.game.currentScene) {
+        this.game.currentScene.onDescend(this.game);
+        this.game.render();
+      }
     });
     skillBar.appendChild(descendBtn);
 
@@ -220,19 +226,23 @@ export class TouchInput {
     waitBtn.className = "wait-btn";
     waitBtn.textContent = "待機";
     waitBtn.addEventListener("click", () => {
-      if (this.game.state !== "playing") return;
-      this.game.player.endTurn();
-      this.game.render();
+      if (!this.game.isPlayable()) return;
+      if (this.game.currentScene) {
+        this.game.currentScene.onWait(this.game);
+        this.game.render();
+      }
     });
     skillBar.appendChild(waitBtn);
   }
 
   updateSkillButtons(): void {
     const p = this.game.player;
+    if (!p) return;
+
     for (let i = 0; i < 3; i++) {
       const btn = document.getElementById(`skill-btn-${i}`) as HTMLButtonElement;
       if (!btn) continue;
-      if (i < p.skills.length) {
+      if (this.game.state === "dungeon" && i < p.skills.length) {
         const skill = p.skills[i];
         const cost = skill.spCost === "all" ? "全MP" : `${skill.spCost}MP`;
         btn.textContent = `${skill.name}(${cost})`;
@@ -245,8 +255,24 @@ export class TouchInput {
 
     const descendBtn = document.getElementById("descend-btn") as HTMLButtonElement;
     if (descendBtn) {
-      const tile = this.game.dungeon.getTile(p.x, p.y);
-      descendBtn.disabled = !(tile && tile.char === ">");
+      if (this.game.state === "dungeon") {
+        const scene = this.game.currentScene as import("../game/scenes/DungeonScene").DungeonScene;
+        const tile = scene.dungeon.getTile(p.x, p.y);
+        descendBtn.textContent = "階段>";
+        descendBtn.disabled = !(tile && tile.char === ">");
+      } else if (this.game.state === "world") {
+        const scene = this.game.currentScene as import("../game/scenes/WorldScene").WorldScene;
+        const poi = scene.pois.find(
+          (pp) => pp.x === scene.playerWorldX && pp.y === scene.playerWorldY,
+        );
+        descendBtn.textContent = poi ? `${poi.name}に入る` : "入る>";
+        descendBtn.disabled = !poi;
+      } else if (this.game.state === "town") {
+        descendBtn.textContent = "出る";
+        descendBtn.disabled = false;
+      } else {
+        descendBtn.disabled = true;
+      }
     }
   }
 }

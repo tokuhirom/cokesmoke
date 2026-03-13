@@ -89,6 +89,8 @@ export const SKILL_DEFS: SkillDef[] = [
 ];
 
 export function useSkill(game: Game, skillIndex: number): boolean {
+  if (game.state !== "dungeon") return false;
+
   const p = game.player;
   if (skillIndex >= p.skills.length) return false;
 
@@ -115,6 +117,12 @@ export function useSkill(game: Game, skillIndex: number): boolean {
   }
 
   skill.execute(game);
-  p.endTurn();
+
+  // End turn via dungeon scene
+  const scene = game.dungeonScene;
+  if (scene) {
+    scene.endTurn(game);
+  }
+
   return true;
 }

@@ -1,0 +1,342 @@
+import * as ROT from "rot-js";
+import type { Scene } from "./Scene";
+import type { Game } from "../Game";
+import { Dungeon } from "../Dungeon";
+import { Enemy, spawnEnemies } from "../Enemy";
+import { ItemInstance, spawnItems } from "../Item";
+import {
+  MAP_WIDTH,
+  MAP_HEIGHT,
+  COLOR_WALL,
+  COLOR_FLOOR,
+  COLOR_STEAM_PIPE,
+  COLOR_STAIRS,
+  COLOR_PLAYER,
+  COLOR_EXPLORED,
+  COLOR_ENEMY,
+  COLOR_ITEM,
+  SP_REGEN_PER_TURN,
+  FUEL_COST_PER_TURN,
+  FOV_RADIUS,
+} from "../../constants";
+
+export interface DungeonDef {
+  id: string;
+  name: string;
+  floors: number;
+  enemyTypes: string[];
+  bossFloors: number[];
+  description: string;
+}
+
+export const DUNGEON_DEFS: DungeonDef[] = [
+  {
+    id: "first",
+    name: "始まりの迷宮",
+    floors: 5,
+    enemyTypes: ["s", "g"],
+    bossFloors: [5],
+    description: "初心者向け。ゴブリンとスライムが出現する。",
+  },
+  {
+    id: "forest",
+    name: "妖精の森窟",
+    floors: 7,
+    enemyTypes: ["s", "g", "O"],
+    bossFloors: [7],
+    description: "森の奥深くに広がる洞窟。オークも出現。",
+  },
+  {
+    id: "fire",
+    name: "灼熱の坑道",
+    floors: 8,
+    enemyTypes: ["g", "O", "D"],
+    bossFloors: [4, 8],
+    description: "溶岩が流れる危険な坑道。ドラゴンが棲む。",
+  },
+  {
+    id: "abyss",
+    name: "深淵の迷宮",
+    floors: 10,
+    enemyTypes: ["O", "D"],
+    bossFloors: [5, 10],
+    description: "最も危険な迷宮。全ダンジョンの最深部。",
+  },
+];
+
+export class DungeonScene implements Scene {
+  dungeon!: Dungeon;
+  enemies: Enemy[] = [];
+  items: ItemInstance[] = [];
+  currentFloor = 1;
+  dungeonDef: DungeonDef;
+  isTutorial: boolean;
+
+  constructor(dungeonDef: DungeonDef, isTutorial = false) {
+    this.dungeonDef = dungeonDef;
+    this.isTutorial = isTutorial;
+  }
+
+  onEnter(game: Game): void {
+    this.currentFloor = this.isTutorial ? 0 : 1;
+    this.generateFloor(game);
+  }
+
+  generateFloor(game: Game): void {
+    this.dungeon = new Dungeon(game, this.currentFloor);
+    if (this.isTutorial) {
+      this.dungeon.generateTutorial();
+    } else {
+      this.dungeon.generate();
+    }
+    game.player.placeOnMap(this.dungeon.startX, this.dungeon.startY);
+    this.enemies = spawnEnemies(game, this.currentFloor, this.dungeonDef);
+    this.items = spawnItems(game, this.currentFloor);
+    this.computePlayerFOV(game);
+    if (this.currentFloor > 0) {
+      game.addMessage(`--- ${this.dungeonDef.name} ${this.currentFloor}階 ---`);
+    }
+  }
+
+  computePlayerFOV(game: Game): void {
+    const p = game.player;
+    p.visibleTiles.clear();
+    const fov = new ROT.FOV.PreciseShadowcasting((x, y) => {
+      return this.dungeon.isTransparent(x, y);
+    });
+    fov.compute(p.x, p.y, FOV_RADIUS, (x, y, _r, visible) => {
+      if (visible) {
+        const key = `${x},${y}`;
+        p.visibleTiles.add(key);
+        const tile = this.dungeon.getTile(x, y);
+        if (tile) tile.explored = true;
+      }
+    });
+  }
+
+  onMove(dx: number, dy: number, game: Game): boolean {
+    const p = game.player;
+    const nx = p.x + dx;
+    const ny = p.y + dy;
+
+    p.lastDx = dx;
+    p.lastDy = dy;
+
+    if (!this.dungeon.isWalkable(nx, ny)) return false;
+
+    const enemy = this.getEnemyAt(nx, ny);
+    if (enemy) {
+      this.attackEnemy(game, enemy);
+      this.endTurn(game);
+      return true;
+    }
+
+    p.x = nx;
+    p.y = ny;
+
+    this.pickupItem(game, p.x, p.y);
+    this.endTurn(game);
+    return true;
+  }
+
+  private attackEnemy(game: Game, enemy: Enemy): void {
+    const p = game.player;
+    const spBonus = Math.floor(p.sp / 20);
+    const totalAtk = p.attack + spBonus;
+    const dmg = enemy.takeDamage(totalAtk);
+    game.addMessage(`${enemy.name}に${dmg}ダメージ！`);
+    if (!enemy.isAlive()) {
+      game.addMessage(`${enemy.name}を倒した！`);
+    }
+  }
+
+  onWait(game: Game): void {
+    this.endTurn(game);
+  }
+
+  onDescend(game: Game): boolean {
+    const tile = this.dungeon.getTile(game.player.x, game.player.y);
+    if (tile && tile.char === ">") {
+      this.nextFloor(game);
+      return true;
+    }
+    return false;
+  }
+
+  endTurn(game: Game): void {
+    const p = game.player;
+
+    if (p.armorTurns > 0) p.armorTurns--;
+
+    p.fuel -= FUEL_COST_PER_TURN;
+    if (p.fuel <= 0) {
+      p.fuel = 0;
+      game.gameOver();
+      return;
+    }
+
+    p.sp = Math.min(p.maxSp, p.sp + SP_REGEN_PER_TURN);
+
+    const tile = this.dungeon.getTile(p.x, p.y);
+    if (tile && tile.char === "\u2261") {
+      p.sp = Math.min(p.maxSp, p.sp + 5);
+      game.addMessage("魔法陣からMPを回復した");
+    }
+
+    if (tile && tile.char === ">") {
+      game.addMessage("階段を見つけた！ >キーで降りる");
+    }
+
+    // Companion acts
+    if (game.companion && game.companion.isAlive()) {
+      game.companion.act(this);
+    }
+
+    this.processEnemyTurns(game);
+    this.computePlayerFOV(game);
+  }
+
+  nextFloor(game: Game): void {
+    if (this.isTutorial) {
+      game.onTutorialComplete();
+      return;
+    }
+
+    if (this.currentFloor >= this.dungeonDef.floors) {
+      game.addMessage(`${this.dungeonDef.name}を踏破した！`);
+      game.exitDungeon();
+      return;
+    }
+
+    this.currentFloor++;
+    this.generateFloor(game);
+    game.render();
+  }
+
+  pickupItem(game: Game, x: number, y: number): void {
+    const item = this.items.find((i) => !i.picked && i.x === x && i.y === y);
+    if (item) {
+      item.picked = true;
+      item.def.effect(game);
+    }
+  }
+
+  getEnemyAt(x: number, y: number): Enemy | undefined {
+    return this.enemies.find((e) => e.isAlive() && e.x === x && e.y === y);
+  }
+
+  processEnemyTurns(game: Game): void {
+    for (const enemy of this.enemies) {
+      if (enemy.isAlive()) {
+        enemy.act();
+        if (game.state !== "dungeon") return;
+      }
+    }
+  }
+
+  render(display: ROT.Display, game: Game): void {
+    const player = game.player;
+
+    for (let x = 0; x < MAP_WIDTH; x++) {
+      for (let y = 0; y < MAP_HEIGHT; y++) {
+        const key = Dungeon.key(x, y);
+        const tile = this.dungeon.getTile(x, y);
+        if (!tile) continue;
+
+        const visible = player.visibleTiles.has(key);
+        const explored = tile.explored;
+
+        if (!visible && !explored) continue;
+
+        let fg: string;
+        let bg: string | null = null;
+        let ch = tile.char;
+
+        if (!visible) {
+          if (tile.char === ">") {
+            fg = "#998800";
+            bg = "#0d0d1a";
+          } else {
+            fg = COLOR_EXPLORED;
+            if (tile.walkable) ch = "\u00b7";
+            bg = "#0d0d1a";
+          }
+        } else {
+          switch (tile.char) {
+            case "\u2588":
+              fg = COLOR_WALL;
+              bg = "#1e1e3a";
+              break;
+            case "\u2261":
+              fg = COLOR_STEAM_PIPE;
+              bg = "#1a2030";
+              break;
+            case ">":
+              fg = COLOR_STAIRS;
+              bg = "#1a2030";
+              break;
+            case " ":
+              ch = "\u00b7";
+              fg = "#333350";
+              bg = "#1a2030";
+              break;
+            default:
+              fg = COLOR_FLOOR;
+              bg = "#1a2030";
+              break;
+          }
+        }
+
+        display.draw(x, y, ch, fg, bg);
+      }
+    }
+
+    for (const item of this.items) {
+      if (!item.picked && player.visibleTiles.has(`${item.x},${item.y}`)) {
+        display.draw(item.x, item.y, item.def.char, COLOR_ITEM, null);
+      }
+    }
+
+    for (const enemy of this.enemies) {
+      if (enemy.isAlive() && player.visibleTiles.has(`${enemy.x},${enemy.y}`)) {
+        display.draw(enemy.x, enemy.y, enemy.char, COLOR_ENEMY, null);
+      }
+    }
+
+    // Draw companion
+    if (game.companion && game.companion.isAlive()) {
+      display.draw(
+        game.companion.x,
+        game.companion.y,
+        game.companion.char,
+        game.companion.color,
+        null,
+      );
+    }
+
+    display.draw(player.x, player.y, player.char, COLOR_PLAYER, null);
+  }
+
+  getStatusHTML(game: Game): string {
+    const p = game.player;
+    const hpBar = makeBar(p.hp, p.maxHp, "\u2588", "\u2591");
+    const spBar = makeBar(p.sp, p.maxSp, "=", "-");
+    const armorStr = p.armorTurns > 0 ? ' <span style="color:#44ff88">[バリア]</span>' : "";
+    const floorLabel = this.isTutorial
+      ? "Tutorial"
+      : `${this.dungeonDef.name} ${this.currentFloor}F`;
+
+    return (
+      `<span class="hp-color">HP:${hpBar} ${p.hp}/${p.maxHp}</span>  ` +
+      `<span class="fuel-color">松明:${p.fuel}</span>  ` +
+      `<span class="floor-color">${floorLabel}</span>${armorStr}<br>` +
+      `<span class="sp-color">MP:[${spBar}] ${p.sp}/${p.maxSp}</span>`
+    );
+  }
+}
+
+function makeBar(current: number, max: number, fillChar: string, emptyChar: string): string {
+  const width = 8;
+  const filled = Math.round((current / max) * width);
+  return fillChar.repeat(filled) + emptyChar.repeat(width - filled);
+}

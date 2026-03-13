@@ -1,13 +1,22 @@
 import { Display } from "../ui/Display";
 import { TouchInput } from "../ui/TouchInput";
-import { Dungeon } from "./Dungeon";
 import { Player } from "./Player";
-import { Enemy, spawnEnemies } from "./Enemy";
-import { ItemInstance, spawnItems } from "./Item";
+import { Companion } from "./Companion";
 import { TutorialManager } from "./Tutorial";
-import { TOTAL_FLOORS } from "../constants";
+import type { Scene } from "./scenes/Scene";
+import { DungeonScene, DUNGEON_DEFS } from "./scenes/DungeonScene";
+import { WorldScene } from "./scenes/WorldScene";
+import { TownScene, TOWN_DEFS } from "./scenes/TownScene";
 
-export type GameState = "title" | "help" | "prologue" | "playing" | "gameover" | "win";
+export type GameState =
+  | "title"
+  | "help"
+  | "prologue"
+  | "world"
+  | "town"
+  | "dungeon"
+  | "gameover"
+  | "win";
 
 const STORAGE_KEY = "isekai_dungeon_tutorial_done";
 
@@ -19,15 +28,35 @@ const PROLOGUE_PAGES = [
 
 export class Game {
   display!: Display;
-  dungeon!: Dungeon;
   player!: Player;
-  enemies: Enemy[] = [];
-  items: ItemInstance[] = [];
-  currentFloor = 1;
+  companion: Companion | null = null;
   state: GameState = "title";
   messages: string[] = [];
   input!: TouchInput;
   tutorial: TutorialManager | null = null;
+
+  // Scene system
+  currentScene: Scene | null = null;
+  worldScene!: WorldScene;
+  dungeonScene: DungeonScene | null = null;
+  private townScene: TownScene | null = null;
+
+  // For backward compat with Player/Enemy that reference game.dungeon
+  get dungeon() {
+    return this.dungeonScene!.dungeon;
+  }
+
+  get enemies() {
+    return this.dungeonScene?.enemies ?? [];
+  }
+
+  get items() {
+    return this.dungeonScene?.items ?? [];
+  }
+
+  get currentFloor() {
+    return this.dungeonScene?.currentFloor ?? 0;
+  }
 
   init(): void {
     this.display = new Display();
@@ -51,6 +80,10 @@ export class Game {
     }
   }
 
+  isPlayable(): boolean {
+    return this.state === "world" || this.state === "town" || this.state === "dungeon";
+  }
+
   showTitle(): void {
     this.state = "title";
     const overlay = document.getElementById("overlay")!;
@@ -61,7 +94,7 @@ export class Game {
     overlay.innerHTML = `
       <h1>異世界迷宮録</h1>
       <div class="subtitle">Isekai Dungeon Crawl</div>
-      <button class="menu-btn" id="btn-start">${tutorialDone ? "冒険に出る" : "冒険に出る"}</button>
+      <button class="menu-btn" id="btn-start">冒険に出る</button>
       ${tutorialDone ? '<button class="menu-btn secondary" id="btn-tutorial">チュートリアル</button>' : ""}
       <button class="menu-btn secondary" id="btn-help">遊び方</button>
       <div class="build-info">${__BUILD_TIME__} / ${__COMMIT_HASH__}</div>
@@ -116,72 +149,38 @@ export class Game {
     overlay.innerHTML = `
       <div id="help-content">
         <h2>世界観</h2>
-        <p>気がつくと、見知らぬ迷宮の奥深くにいた。
-        手元にあるのは一本のたいまつだけ。
-        地上への出口を目指し、10階層の迷宮を踏破せよ。</p>
+        <p>気がつくと、見知らぬ村にいた。
+        この世界には複数の迷宮が存在し、
+        全ての迷宮を踏破した者だけが元の世界に帰れるという。</p>
 
         <h2>操作方法</h2>
         <table>
           <tr><td>移動</td><td>8方向D-pad / スワイプ / 矢印キー</td></tr>
           <tr><td>斜め</td><td>D-pad斜めボタン / 斜めスワイプ / YUBN</td></tr>
           <tr><td>待機</td><td>D-pad中央 / タップ / .キー</td></tr>
-          <tr><td>階段</td><td>> キー / 階段ボタン</td></tr>
+          <tr><td>入る</td><td>> キー / 階段ボタン（街・迷宮に入る）</td></tr>
           <tr><td>スキル</td><td>1-3キー / スキルボタン</td></tr>
           <tr><td>攻撃</td><td>敵の方向に移動（斜めもOK）</td></tr>
         </table>
 
-        <h2>魔力 (MP)</h2>
-        <p>毎ターン自動回復する。MPが高いほど攻撃力にボーナス。
-        魔法陣(<span style="color:#88ccff">\u2261</span>)の上でさらに回復。
-        スキル使用で消費する。</p>
+        <h2>ワールドマップ</h2>
+        <p>ランダム生成のワールドを冒険しよう。
+        <span style="color:#ffcc00">*</span>=街、
+        <span style="color:#ff6644">D</span>=迷宮入口。
+        街やダンジョンの上で>キーで入れる。</p>
 
-        <h2>たいまつ</h2>
-        <p>毎ターン1ずつ減少する。0になると闇に呑まれ
-        ゲームオーバー。たいまつ(<span style="color:#44ff88">\u2666</span>)を拾って補充しよう。</p>
+        <h2>迷宮</h2>
+        <p>入るたびに構成が変わる不思議な迷宮。
+        たいまつ(<span style="color:#44ff88">\u2666</span>)を拾って明かりを確保しよう。
+        最深部に到達すると踏破完了。</p>
 
-        <h2>マップ記号</h2>
-        <table>
-          <tr><td style="color:#e94560">@</td><td>あなた（転生者）</td></tr>
-          <tr><td style="color:#4a4a6a">\u2588</td><td>壁</td></tr>
-          <tr><td style="color:#88ccff">\u2261</td><td>魔法陣（踏むとMP回復）</td></tr>
-          <tr><td style="color:#ffcc00">></td><td>階段（次の階層へ）</td></tr>
-          <tr><td style="color:#44ff88">\u2666 ! / [ ~ + ?</td><td>アイテム各種</td></tr>
-          <tr><td style="color:#ff4444">g s O D</td><td>敵</td></tr>
-        </table>
+        <h2>仲間</h2>
+        <p>各地の街で仲間を見つけよう。
+        仲間は迷宮で一緒に戦ってくれる。</p>
 
-        <h2>敵</h2>
-        <table>
-          <tr><td style="color:#ff4444">g</td><td>ゴブリン - 低速・高耐久</td></tr>
-          <tr><td style="color:#ff4444">s</td><td>スライム - 高速・群れ</td></tr>
-          <tr><td style="color:#ff4444">O</td><td>オーク - 3F以降出現</td></tr>
-          <tr><td style="color:#ff4444">D</td><td>ドラゴン - ボス(5F/10F)</td></tr>
-        </table>
-
-        <h2>アイテム</h2>
-        <table>
-          <tr><td style="color:#44ff88">\u2666</td><td>たいまつ - 明かり+50</td></tr>
-          <tr><td style="color:#44ff88">!</td><td>魔法書 - MP上限+20</td></tr>
-          <tr><td style="color:#44ff88">/</td><td>剣 - 攻撃力+3</td></tr>
-          <tr><td style="color:#44ff88">[</td><td>鎧 - 防御力+2</td></tr>
-          <tr><td style="color:#44ff88">~</td><td>エリクサー - MP全回復</td></tr>
-          <tr><td style="color:#44ff88">+</td><td>回復薬 - HP+25</td></tr>
-          <tr><td style="color:#44ff88">?</td><td>魔導書 - スキル習得</td></tr>
-        </table>
-
-        <h2>スキル (魔導書で習得・最大3つ)</h2>
-        <table>
-          <tr><td>ファイアボルト</td><td>前方2マスにダメージ (20MP)</td></tr>
-          <tr><td>メテオ</td><td>MP全消費→周囲に大ダメージ</td></tr>
-          <tr><td>バリア</td><td>1ターン無敵 (15MP)</td></tr>
-          <tr><td>テレポート</td><td>周囲の敵が見失う (10MP)</td></tr>
-        </table>
-
-        <h2>ヒント</h2>
-        <p>・たいまつを優先的に拾おう。明かりが尽きたら即死<br>
-        ・魔法陣の上を通ってMPを回復<br>
-        ・MPが高い時に攻撃するとボーナスダメージ<br>
-        ・テレポートで逃走、バリアでピンチを凌ごう<br>
-        ・5Fと10Fにボスが出現する</p>
+        <h2>死亡</h2>
+        <p>死亡するとスポーン地点（始まりの村）に戻される。
+        集めたアイテムは死んだ場所に残される。</p>
 
         <div class="back-btn-wrap">
           <button class="menu-btn secondary" id="btn-back">戻る</button>
@@ -201,88 +200,118 @@ export class Game {
 
   startNewGame(withTutorial: boolean): void {
     this.hideOverlay();
-    this.state = "playing";
-
-    if (withTutorial) {
-      this.currentFloor = 0;
-      this.tutorial = new TutorialManager(true);
-      this.messages = [];
-    } else {
-      this.currentFloor = 1;
-      this.tutorial = null;
-      this.messages = ["迷宮に足を踏み入れた..."];
-    }
+    this.companion = null;
 
     this.player = new Player(this);
-    this.generateFloor();
-    this.render();
 
-    // Show first tutorial step immediately
-    if (this.tutorial) {
-      this.tutorial.check(this);
-      if (this.tutorial.pendingDialog) {
-        this.showTutorialDialog();
+    if (withTutorial) {
+      // Start in tutorial dungeon
+      this.tutorial = new TutorialManager(true);
+      this.messages = [];
+      const tutDungeon = new DungeonScene(DUNGEON_DEFS[0], true);
+      this.dungeonScene = tutDungeon;
+      this.currentScene = tutDungeon;
+      this.state = "dungeon";
+      tutDungeon.onEnter(this);
+      this.render();
+
+      if (this.tutorial) {
+        this.tutorial.check(this);
+        if (this.tutorial.pendingDialog) {
+          this.showTutorialDialog();
+        }
       }
-    }
-  }
-
-  generateFloor(): void {
-    this.dungeon = new Dungeon(this, this.currentFloor);
-    if (this.currentFloor === 0) {
-      this.dungeon.generateTutorial();
     } else {
-      this.dungeon.generate();
-    }
-    this.player.placeOnMap(this.dungeon.startX, this.dungeon.startY);
-    this.enemies = spawnEnemies(this, this.currentFloor);
-    this.items = spawnItems(this, this.currentFloor);
-    this.player.computeFOV();
-    if (this.currentFloor > 0) {
-      this.addMessage(`--- ${this.currentFloor}階 ---`);
+      // Start on world map
+      this.tutorial = null;
+      this.messages = ["目が覚めた...ここは始まりの村の近くだ。"];
+      this.worldScene = new WorldScene(Math.floor(Math.random() * 100000));
+      this.currentScene = this.worldScene;
+      this.state = "world";
+      this.worldScene.onEnter(this);
+      this.render();
     }
   }
 
-  nextFloor(): void {
-    if (this.currentFloor === 0) {
-      // Leaving tutorial
-      this.markTutorialDone();
-      this.tutorial = null;
-      this.currentFloor = 1;
-      this.addMessage("本当の迷宮が始まる...");
-      this.generateFloor();
-      this.render();
-      return;
-    }
-    if (this.currentFloor >= TOTAL_FLOORS) {
-      this.state = "win";
-      this.addMessage("地上への出口を見つけた！脱出成功！");
-      this.render();
-      return;
-    }
-    this.currentFloor++;
-    this.generateFloor();
+  onTutorialComplete(): void {
+    this.markTutorialDone();
+    this.tutorial = null;
+    this.addMessage("チュートリアル完了！ワールドマップへ...");
+
+    // Transition to world map
+    this.worldScene = new WorldScene(Math.floor(Math.random() * 100000));
+    this.currentScene = this.worldScene;
+    this.state = "world";
+    this.worldScene.onEnter(this);
     this.render();
+  }
+
+  enterDungeon(dungeonId: string): void {
+    const def = DUNGEON_DEFS.find((d) => d.id === dungeonId);
+    if (!def) return;
+
+    this.hideOverlay();
+    const scene = new DungeonScene(def);
+    this.dungeonScene = scene;
+    this.currentScene = scene;
+    this.state = "dungeon";
+    scene.onEnter(this);
+
+    // Place companion in dungeon
+    if (this.companion) {
+      this.companion.x = this.player.x;
+      this.companion.y = this.player.y + 1;
+      this.companion.hp = this.companion.maxHp;
+    }
+
+    this.render();
+  }
+
+  exitDungeon(): void {
+    this.dungeonScene = null;
+    this.currentScene = this.worldScene;
+    this.state = "world";
+    this.worldScene.onEnter(this);
+    this.render();
+  }
+
+  enterTown(townId: string): void {
+    const def = TOWN_DEFS.find((t) => t.id === townId);
+    if (!def) return;
+
+    const scene = new TownScene(def);
+    this.townScene = scene;
+    this.currentScene = scene;
+    this.state = "town";
+    scene.onEnter(this);
+    this.render();
+  }
+
+  exitTown(): void {
+    this.townScene = null;
+    this.currentScene = this.worldScene;
+    this.state = "world";
+    this.worldScene.onEnter(this);
+    this.render();
+  }
+
+  recruitCompanion(): void {
+    if (!this.companion) {
+      this.companion = new Companion(this);
+    }
+  }
+
+  // Backward compat methods used by Enemy/Skill/Tutorial
+  getEnemyAt(x: number, y: number) {
+    return this.dungeonScene?.getEnemyAt(x, y);
   }
 
   pickupItem(x: number, y: number): void {
-    const item = this.items.find((i) => !i.picked && i.x === x && i.y === y);
-    if (item) {
-      item.picked = true;
-      item.def.effect(this);
-    }
-  }
-
-  getEnemyAt(x: number, y: number): Enemy | undefined {
-    return this.enemies.find((e) => e.isAlive() && e.x === x && e.y === y);
+    this.dungeonScene?.pickupItem(this, x, y);
   }
 
   processEnemyTurns(): void {
-    for (const enemy of this.enemies) {
-      if (enemy.isAlive()) {
-        enemy.act();
-        if (this.state !== "playing") return;
-      }
-    }
+    this.dungeonScene?.processEnemyTurns(this);
   }
 
   addMessage(msg: string): void {
@@ -324,7 +353,12 @@ export class Game {
 
   gameOver(): void {
     this.state = "gameover";
-    this.addMessage("たいまつが燃え尽き、闇に呑まれた...");
+    this.addMessage("力尽きた...");
+    // TODO: drop items at death location, respawn at starting town
     this.render();
+  }
+
+  nextFloor(): void {
+    this.dungeonScene?.nextFloor(this);
   }
 }

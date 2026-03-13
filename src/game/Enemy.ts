@@ -1,6 +1,7 @@
 import * as ROT from "rot-js";
 import { Entity } from "./Entity";
 import type { Game } from "./Game";
+import type { DungeonDef } from "./scenes/DungeonScene";
 import { COLOR_ENEMY } from "../constants";
 
 export interface EnemyDef {
@@ -33,17 +34,18 @@ export class Enemy extends Entity {
 
   act(): void {
     const player = this.game.player;
-    // Check if player is visible
+    const scene = this.game.dungeonScene;
+    if (!scene) return;
+
     if (player.visibleTiles.has(`${this.x},${this.y}`)) {
       this.awakened = true;
     }
 
     if (!this.awakened) {
-      this.wander();
+      this.wander(scene);
       return;
     }
 
-    // Adjacent to player? Attack (8-direction)
     const dx = Math.abs(player.x - this.x);
     const dy = Math.abs(player.y - this.y);
     if (dx <= 1 && dy <= 1 && dx + dy > 0) {
@@ -51,12 +53,10 @@ export class Enemy extends Entity {
       return;
     }
 
-    // Pathfind toward player
     const passable = (x: number, y: number): boolean => {
       if (x === player.x && y === player.y) return true;
-      if (!this.game.dungeon.isWalkable(x, y)) return false;
-      // Don't walk through other enemies
-      for (const e of this.game.enemies) {
+      if (!scene.dungeon.isWalkable(x, y)) return false;
+      for (const e of scene.enemies) {
         if (e !== this && e.isAlive() && e.x === x && e.y === y) return false;
       }
       return true;
@@ -74,14 +74,13 @@ export class Enemy extends Entity {
     }
   }
 
-  private wander(): void {
+  private wander(scene: import("./scenes/DungeonScene").DungeonScene): void {
     const dirs = ROT.DIRS[8];
     const dir = dirs[Math.floor(ROT.RNG.getUniform() * dirs.length)];
     const nx = this.x + dir[0];
     const ny = this.y + dir[1];
-    if (this.game.dungeon.isWalkable(nx, ny)) {
-      // Don't walk into other enemies
-      const occupied = this.game.enemies.some(
+    if (scene.dungeon.isWalkable(nx, ny)) {
+      const occupied = scene.enemies.some(
         (e) => e !== this && e.isAlive() && e.x === nx && e.y === ny,
       );
       if (!occupied) {
@@ -101,16 +100,18 @@ export class Enemy extends Entity {
   }
 }
 
-export function spawnEnemies(game: Game, floor: number): Enemy[] {
+export function spawnEnemies(game: Game, floor: number, dungeonDef?: DungeonDef): Enemy[] {
   const enemies: Enemy[] = [];
-  const floorTiles = game.dungeon.getFloorTiles().filter(([x, y]) => {
-    // Don't spawn on player start or stairs
-    if (x === game.dungeon.startX && y === game.dungeon.startY) return false;
-    if (x === game.dungeon.stairsX && y === game.dungeon.stairsY) return false;
+  const scene = game.dungeonScene;
+  if (!scene) return enemies;
+
+  const floorTiles = scene.dungeon.getFloorTiles().filter(([x, y]) => {
+    if (x === scene.dungeon.startX && y === scene.dungeon.startY) return false;
+    if (x === scene.dungeon.stairsX && y === scene.dungeon.stairsY) return false;
     return true;
   });
 
-  // Tutorial floor: 1 weak slime in the enemy room
+  // Tutorial floor
   if (floor === 0) {
     const slime = new Enemy(game, { ...ENEMY_DEFS["s"], hp: 5, attack: 2, defense: 0 });
     slime.x = 22;
@@ -118,12 +119,8 @@ export function spawnEnemies(game: Game, floor: number): Enemy[] {
     return [slime];
   }
 
-  // Number of enemies scales with floor
   const count = 3 + floor * 2;
-
-  // Pick enemy types based on floor
-  const availableTypes: string[] = ["g", "s"];
-  if (floor >= 3) availableTypes.push("O");
+  const availableTypes = dungeonDef?.enemyTypes ?? ["g", "s"];
 
   for (let i = 0; i < Math.min(count, floorTiles.length); i++) {
     const idx = Math.floor(ROT.RNG.getUniform() * floorTiles.length);
@@ -137,8 +134,9 @@ export function spawnEnemies(game: Game, floor: number): Enemy[] {
     enemies.push(enemy);
   }
 
-  // Add boss on boss floors
-  if (floor === 5 || floor === 10) {
+  // Boss floors
+  const bossFloors = dungeonDef?.bossFloors ?? [5, 10];
+  if (bossFloors.includes(floor) && floorTiles.length > 0) {
     const idx = Math.floor(ROT.RNG.getUniform() * floorTiles.length);
     const [x, y] = floorTiles[idx];
     const boss = new Enemy(game, ENEMY_DEFS["D"]);
