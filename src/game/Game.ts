@@ -64,6 +64,7 @@ export class Game {
       <button class="menu-btn" id="btn-start">${tutorialDone ? "冒険に出る" : "冒険に出る"}</button>
       ${tutorialDone ? '<button class="menu-btn secondary" id="btn-tutorial">チュートリアル</button>' : ""}
       <button class="menu-btn secondary" id="btn-help">遊び方</button>
+      <div class="build-info">${__BUILD_TIME__} / ${__COMMIT_HASH__}</div>
     `;
     document.getElementById("btn-start")!.addEventListener("click", () => {
       if (tutorialDone) {
