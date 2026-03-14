@@ -85,6 +85,21 @@ export const SKILL_DEFS: SkillDef[] = [
     },
   },
   {
+    name: "ヒールII",
+    description: "HP60回復",
+    spCost: 35,
+    execute: (game) => {
+      const p = game.player;
+      const actual = Math.min(60, p.maxHp - p.hp);
+      p.hp = Math.min(p.maxHp, p.hp + 60);
+      if (actual > 0) {
+        game.addMessage(`ヒールII！HP${actual}回復！`);
+      } else {
+        game.addMessage("ヒールII！...しかしHPは満タンだった");
+      }
+    },
+  },
+  {
     name: "テレポート",
     description: "ランダムな場所に瞬間移動",
     spCost: 10,
