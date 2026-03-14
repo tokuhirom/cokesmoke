@@ -20,6 +20,8 @@ export interface SavedWorld {
   weaponId: string | null;
   armorId: string | null;
   accessoryId: string | null;
+  // Equipment inventory
+  ownedEquipmentIds: string[];
   // Materials
   materials: Record<string, number>;
   // Companion

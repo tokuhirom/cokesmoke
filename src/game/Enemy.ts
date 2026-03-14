@@ -19,6 +19,19 @@ export const ENEMY_DEFS: Record<string, EnemyDef> = {
   s: { char: "s", name: "スライム", hp: 12, attack: 5, defense: 1, speed: 2, isBoss: false },
   O: { char: "O", name: "オーク", hp: 50, attack: 12, defense: 3, speed: 1, isBoss: false },
   D: { char: "D", name: "ドラゴン", hp: 100, attack: 15, defense: 6, speed: 1, isBoss: true },
+  // Bosses per dungeon
+  G: {
+    char: "G",
+    name: "ゴブリンキング",
+    hp: 45,
+    attack: 10,
+    defense: 5,
+    speed: 0.5,
+    isBoss: true,
+  },
+  T: { char: "T", name: "トレント", hp: 70, attack: 12, defense: 5, speed: 0.5, isBoss: true },
+  R: { char: "R", name: "炎竜", hp: 90, attack: 14, defense: 6, speed: 1, isBoss: true },
+  A: { char: "A", name: "深淵の王", hp: 150, attack: 18, defense: 8, speed: 1, isBoss: true },
 };
 
 export class Enemy extends Entity {
@@ -139,7 +152,8 @@ export function spawnEnemies(game: Game, floor: number, dungeonDef?: DungeonDef)
   if (bossFloors.includes(floor) && floorTiles.length > 0) {
     const idx = Math.floor(ROT.RNG.getUniform() * floorTiles.length);
     const [x, y] = floorTiles[idx];
-    const boss = new Enemy(game, ENEMY_DEFS["D"]);
+    const bossKey = dungeonDef?.bossType ?? "D";
+    const boss = new Enemy(game, ENEMY_DEFS[bossKey]);
     boss.x = x;
     boss.y = y;
     boss.awakened = true;

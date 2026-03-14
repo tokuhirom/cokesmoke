@@ -26,6 +26,7 @@ export interface DungeonDef {
   floors: number;
   enemyTypes: string[];
   bossFloors: number[];
+  bossType: string;
   description: string;
 }
 
@@ -36,6 +37,7 @@ export const DUNGEON_DEFS: DungeonDef[] = [
     floors: 5,
     enemyTypes: ["s", "g"],
     bossFloors: [5],
+    bossType: "G",
     description: "初心者向け。鉄鉱石が採れる。",
   },
   {
@@ -44,14 +46,16 @@ export const DUNGEON_DEFS: DungeonDef[] = [
     floors: 7,
     enemyTypes: ["s", "g", "O"],
     bossFloors: [7],
+    bossType: "T",
     description: "鉄鉱石・精霊石が採れる。オークも出現。",
   },
   {
     id: "fire",
     name: "灼熱の坑道",
     floors: 8,
-    enemyTypes: ["g", "O", "D"],
+    enemyTypes: ["g", "O"],
     bossFloors: [4, 8],
+    bossType: "R",
     description: "竜の鱗・竜の牙・ミスリル鉱が採れる。ドラゴンに注意。",
   },
   {
@@ -60,6 +64,7 @@ export const DUNGEON_DEFS: DungeonDef[] = [
     floors: 10,
     enemyTypes: ["O", "D"],
     bossFloors: [5, 10],
+    bossType: "A",
     description: "アダマン鉱・闇の結晶が眠る最深部。",
   },
 ];

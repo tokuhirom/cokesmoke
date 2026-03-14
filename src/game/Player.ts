@@ -25,10 +25,13 @@ export class Player extends Entity {
   baseAttack: number;
   baseDefense: number;
 
-  // Equipment
+  // Equipment (currently worn)
   weapon: EquipmentDef | null = null;
   armor: EquipmentDef | null = null;
   accessory: EquipmentDef | null = null;
+
+  // Equipment inventory (all owned, including equipped)
+  ownedEquipment: EquipmentDef[] = [];
 
   // Inventory: materials
   materials: Map<string, number> = new Map();
@@ -80,8 +83,20 @@ export class Player extends Entity {
         this.accessory = equipment;
         break;
     }
+    // Add to owned list if not already there
+    if (!this.ownedEquipment.some((e) => e.id === equipment.id)) {
+      this.ownedEquipment.push(equipment);
+    }
     this.recalcStats();
     this.game.addMessage(`${equipment.name}を装備した！ (${equipment.description})`);
+  }
+
+  unequip(slot: "weapon" | "armor" | "accessory"): void {
+    const current = this[slot];
+    if (!current) return;
+    this[slot] = null;
+    this.recalcStats();
+    this.game.addMessage(`${current.name}を外した`);
   }
 
   addMaterial(materialId: string, count = 1): void {

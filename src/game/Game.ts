@@ -237,14 +237,32 @@ export class Game {
     this.player.baseDefense = saved.playerBaseDefense;
 
     // Restore equipment
+    // Restore owned equipment inventory
+    this.player.ownedEquipment = [];
+    for (const eqId of saved.ownedEquipmentIds ?? []) {
+      if (EQUIPMENT_DEFS[eqId]) {
+        this.player.ownedEquipment.push(EQUIPMENT_DEFS[eqId]);
+      }
+    }
+
     if (saved.weaponId && EQUIPMENT_DEFS[saved.weaponId]) {
       this.player.weapon = EQUIPMENT_DEFS[saved.weaponId];
+      // Ensure equipped items are in owned list
+      if (!this.player.ownedEquipment.some((e) => e.id === saved.weaponId)) {
+        this.player.ownedEquipment.push(EQUIPMENT_DEFS[saved.weaponId!]);
+      }
     }
     if (saved.armorId && EQUIPMENT_DEFS[saved.armorId]) {
       this.player.armor = EQUIPMENT_DEFS[saved.armorId];
+      if (!this.player.ownedEquipment.some((e) => e.id === saved.armorId)) {
+        this.player.ownedEquipment.push(EQUIPMENT_DEFS[saved.armorId!]);
+      }
     }
     if (saved.accessoryId && EQUIPMENT_DEFS[saved.accessoryId]) {
       this.player.accessory = EQUIPMENT_DEFS[saved.accessoryId];
+      if (!this.player.ownedEquipment.some((e) => e.id === saved.accessoryId)) {
+        this.player.ownedEquipment.push(EQUIPMENT_DEFS[saved.accessoryId!]);
+      }
     }
     this.player.recalcStats();
 
@@ -304,6 +322,7 @@ export class Game {
       weaponId: this.player.weapon?.id ?? null,
       armorId: this.player.armor?.id ?? null,
       accessoryId: this.player.accessory?.id ?? null,
+      ownedEquipmentIds: this.player.ownedEquipment.map((e) => e.id),
       materials: Object.fromEntries(this.player.materials),
       hasCompanion: this.companion != null,
       recruitedNpcs: this.recruitedNpcs.map(serializeNpc),
@@ -418,6 +437,86 @@ export class Game {
     const overlay = document.getElementById("overlay")!;
     overlay.classList.add("hidden");
     overlay.onclick = null;
+  }
+
+  showEquipMenu(): void {
+    if (!this.isPlayable()) return;
+
+    const overlay = document.getElementById("overlay")!;
+    overlay.classList.remove("hidden");
+
+    const p = this.player;
+    const slotNames: Record<string, string> = { weapon: "武器", armor: "防具", accessory: "装飾" };
+
+    let html = '<div class="tutorial-dialog">';
+    html += "<p>装備変更</p>";
+
+    // Current equipment
+    html += '<div style="margin:8px 0;font-size:12px;color:#aaa">';
+    html += `武器: ${p.weapon ? `<span style="color:#ffaa44">${p.weapon.name}</span>` : "なし"} / `;
+    html += `防具: ${p.armor ? `<span style="color:#44aaff">${p.armor.name}</span>` : "なし"} / `;
+    html += `装飾: ${p.accessory ? `<span style="color:#aa88ff">${p.accessory.name}</span>` : "なし"}`;
+    html += "</div>";
+    html += `<div style="font-size:11px;color:#888;margin-bottom:8px">ATK:${p.attack} DEF:${p.defense} MP上限:${p.maxSp}</div>`;
+
+    // List owned equipment by slot
+    for (const slot of ["weapon", "armor", "accessory"] as const) {
+      const items = p.ownedEquipment.filter((e) => e.slot === slot);
+      if (items.length === 0) continue;
+
+      html += `<div style="font-size:11px;color:#666;margin-top:6px">${slotNames[slot]}</div>`;
+      for (const eq of items) {
+        const isEquipped = p[slot]?.id === eq.id;
+        const label = isEquipped ? `✓ ${eq.name}` : eq.name;
+        const btnClass = isEquipped ? "menu-btn secondary" : "menu-btn";
+        html += `<button class="${btnClass}" style="font-size:12px;padding:6px;margin:2px 0" id="eq-${eq.id}">`;
+        html += `${label} <span style="font-size:10px;color:#aaa">${eq.description}</span>`;
+        html += "</button>";
+      }
+
+      // Unequip button if something is equipped
+      if (p[slot]) {
+        html += `<button class="menu-btn secondary" style="font-size:11px;padding:4px;margin:2px 0" id="uneq-${slot}">`;
+        html += `${slotNames[slot]}を外す`;
+        html += "</button>";
+      }
+    }
+
+    if (p.ownedEquipment.length === 0) {
+      html += '<p style="color:#666;font-size:12px">装備品を持っていない</p>';
+    }
+
+    html +=
+      '<button class="menu-btn secondary" id="equip-close" style="margin-top:8px">閉じる</button>';
+    html += "</div>";
+    overlay.innerHTML = html;
+
+    // Wire up equip buttons
+    for (const eq of p.ownedEquipment) {
+      const btn = document.getElementById(`eq-${eq.id}`);
+      if (btn) {
+        btn.addEventListener("click", () => {
+          p.equip(eq);
+          this.showEquipMenu(); // Refresh
+        });
+      }
+    }
+
+    // Wire up unequip buttons
+    for (const slot of ["weapon", "armor", "accessory"] as const) {
+      const btn = document.getElementById(`uneq-${slot}`);
+      if (btn) {
+        btn.addEventListener("click", () => {
+          p.unequip(slot);
+          this.showEquipMenu(); // Refresh
+        });
+      }
+    }
+
+    document.getElementById("equip-close")!.addEventListener("click", () => {
+      this.hideOverlay();
+      this.render();
+    });
   }
 
   onTutorialComplete(): void {

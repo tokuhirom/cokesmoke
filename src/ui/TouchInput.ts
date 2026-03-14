@@ -45,6 +45,13 @@ export class TouchInput {
         return;
       }
 
+      // Equipment menu
+      if (e.key === "e") {
+        this.game.showEquipMenu();
+        e.preventDefault();
+        return;
+      }
+
       let dx = 0,
         dy = 0;
       switch (e.key) {
@@ -221,6 +228,15 @@ export class TouchInput {
       }
     });
     skillBar.appendChild(descendBtn);
+
+    const equipBtn = document.createElement("button");
+    equipBtn.className = "wait-btn";
+    equipBtn.textContent = "装備";
+    equipBtn.addEventListener("click", () => {
+      if (!this.game.isPlayable()) return;
+      this.game.showEquipMenu();
+    });
+    skillBar.appendChild(equipBtn);
 
     const waitBtn = document.createElement("button");
     waitBtn.className = "wait-btn";

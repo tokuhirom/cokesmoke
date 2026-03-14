@@ -43,6 +43,7 @@ export interface DroppedLoot {
   weaponId: string | null;
   armorId: string | null;
   accessoryId: string | null;
+  equipmentIds: string[];
   materials: Record<string, number>;
 }
 
@@ -374,12 +375,7 @@ export class WorldScene implements Scene {
       materials[id] = count;
     }
 
-    // Only drop if there's something to drop
-    const hasStuff =
-      p.weapon != null ||
-      p.armor != null ||
-      p.accessory != null ||
-      Object.keys(materials).length > 0;
+    const hasStuff = p.ownedEquipment.length > 0 || Object.keys(materials).length > 0;
 
     if (hasStuff) {
       this.droppedLoots.push({
@@ -388,6 +384,7 @@ export class WorldScene implements Scene {
         weaponId: p.weapon?.id ?? null,
         armorId: p.armor?.id ?? null,
         accessoryId: p.accessory?.id ?? null,
+        equipmentIds: p.ownedEquipment.map((e) => e.id),
         materials,
       });
     }
@@ -396,6 +393,7 @@ export class WorldScene implements Scene {
     p.weapon = null;
     p.armor = null;
     p.accessory = null;
+    p.ownedEquipment = [];
     p.materials.clear();
     p.recalcStats();
   }
@@ -407,20 +405,30 @@ export class WorldScene implements Scene {
     const loot = this.droppedLoots[idx];
     const p = game.player;
 
-    // Recover equipment
+    // Recover all owned equipment
+    let eqCount = 0;
+    for (const eqId of loot.equipmentIds ?? []) {
+      if (EQUIPMENT_DEFS[eqId] && !p.ownedEquipment.some((e) => e.id === eqId)) {
+        p.ownedEquipment.push(EQUIPMENT_DEFS[eqId]);
+        eqCount++;
+      }
+    }
+
+    // Re-equip what was worn
     if (loot.weaponId && EQUIPMENT_DEFS[loot.weaponId]) {
       p.weapon = EQUIPMENT_DEFS[loot.weaponId];
-      game.addMessage(`${p.weapon!.name}を回収した！`);
     }
     if (loot.armorId && EQUIPMENT_DEFS[loot.armorId]) {
       p.armor = EQUIPMENT_DEFS[loot.armorId];
-      game.addMessage(`${p.armor!.name}を回収した！`);
     }
     if (loot.accessoryId && EQUIPMENT_DEFS[loot.accessoryId]) {
       p.accessory = EQUIPMENT_DEFS[loot.accessoryId];
-      game.addMessage(`${p.accessory!.name}を回収した！`);
     }
     p.recalcStats();
+
+    if (eqCount > 0) {
+      game.addMessage(`装備${eqCount}個を回収した！`);
+    }
 
     // Recover materials
     let matCount = 0;
