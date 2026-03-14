@@ -316,7 +316,13 @@ export function renderInventoryMenu(player: Player): void {
   const overlay = getOverlay();
   showOverlay();
 
+  const hungerColor = player.hunger <= 0 ? "#ff2222" : player.hunger <= 20 ? "#ff8844" : "#ffcc00";
   let html = '<div class="tutorial-dialog"><p>持ち物</p>';
+  html += `<div style="font-size:11px;color:#888;margin-bottom:8px">`;
+  html += `<span class="hp-color">HP:${player.hp}/${player.maxHp}</span>  `;
+  html += `<span style="color:${hungerColor}">満腹:${player.hunger}/${player.maxHunger}</span>  `;
+  html += `<span class="sp-color">MP:${player.sp}/${player.maxSp}</span>`;
+  html += `</div>`;
 
   if (player.consumables.size === 0) {
     html += '<p style="color:#666;font-size:12px">消耗品を持っていない</p>';
