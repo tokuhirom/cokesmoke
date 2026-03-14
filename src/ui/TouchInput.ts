@@ -35,10 +35,13 @@ export class TouchInput {
 
       if (this.isInputBlocked()) return;
 
-      // Minimap toggle (Tab key, only in dungeon)
-      if (this.game.state === "dungeon" && e.key === "Tab") {
-        if (this.game.dungeonScene) {
+      // Minimap toggle (Tab key)
+      if (e.key === "Tab") {
+        if (this.game.state === "dungeon" && this.game.dungeonScene) {
           this.game.dungeonScene.toggleMinimap();
+          this.game.render();
+        } else if (this.game.state === "world" && this.game.worldScene) {
+          this.game.worldScene.toggleMinimap();
           this.game.render();
         }
         e.preventDefault();

@@ -77,6 +77,8 @@ export class WorldScene implements Scene {
   seed: number;
   worldEnemies: WorldEnemy[] = [];
   droppedLoots: DroppedLoot[] = [];
+  showMinimap = true;
+  visited: Set<string> = new Set();
 
   constructor(seed: number) {
     this.width = 80;
@@ -92,6 +94,7 @@ export class WorldScene implements Scene {
       this.spawnWorldEnemies();
     }
     game.player.placeOnMap(this.playerWorldX, this.playerWorldY);
+    this.markVisited(this.playerWorldX, this.playerWorldY);
     game.player.visibleTiles.clear();
   }
 
@@ -320,6 +323,7 @@ export class WorldScene implements Scene {
 
     this.playerWorldX = nx;
     this.playerWorldY = ny;
+    this.markVisited(nx, ny);
     game.player.placeOnMap(nx, ny);
 
     this.worldEnemyTurn();
@@ -730,6 +734,91 @@ export class WorldScene implements Scene {
     if (psx >= 0 && psx < MAP_WIDTH && psy >= 0 && psy < MAP_HEIGHT) {
       display.draw(psx, psy, "@", COLOR_PLAYER, null);
     }
+
+    this.renderMinimap(camX, camY);
+  }
+
+  private renderMinimap(camX: number, camY: number): void {
+    const canvas = document.getElementById("minimap") as HTMLCanvasElement | null;
+    if (!canvas) return;
+
+    if (!this.showMinimap) {
+      canvas.style.display = "none";
+      return;
+    }
+
+    const scale = 2;
+    canvas.width = this.width * scale;
+    canvas.height = this.height * scale;
+    canvas.style.display = "block";
+    canvas.style.width = `${this.width * scale}px`;
+    canvas.style.height = `${this.height * scale}px`;
+
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#0a0a14";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    // Draw visited tiles
+    for (const key of this.visited) {
+      const [xs, ys] = key.split(",");
+      const x = parseInt(xs);
+      const y = parseInt(ys);
+      if (x < 0 || x >= this.width || y < 0 || y >= this.height) continue;
+      const tile = this.tiles[x][y];
+      let color: string;
+      if (tile.char === "~") {
+        color = "#223355";
+      } else if (tile.char === "^") {
+        color = "#444444";
+      } else if (tile.char === "T") {
+        color = "#1a4422";
+      } else if (tile.char === "#") {
+        color = "#554433";
+      } else {
+        color = "#2a3a2a";
+      }
+      ctx.fillStyle = color;
+      ctx.fillRect(x * scale, y * scale, scale, scale);
+    }
+
+    // Draw POIs (always visible once visited nearby)
+    for (const poi of this.pois) {
+      ctx.fillStyle = poi.type === "town" ? "#ffcc00" : "#ff6644";
+      ctx.fillRect(poi.x * scale, poi.y * scale, scale, scale);
+    }
+
+    // Draw dropped loot
+    for (const loot of this.droppedLoots) {
+      if (loot.dungeonId) continue;
+      ctx.fillStyle = "#ff44ff";
+      ctx.fillRect(loot.x * scale, loot.y * scale, scale, scale);
+    }
+
+    // Draw viewport rectangle
+    ctx.strokeStyle = "rgba(150, 180, 255, 0.5)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(camX * scale, camY * scale, MAP_WIDTH * scale, MAP_HEIGHT * scale);
+
+    // Draw player
+    ctx.fillStyle = "#44ff44";
+    ctx.fillRect(this.playerWorldX * scale, this.playerWorldY * scale, scale, scale);
+  }
+
+  private markVisited(cx: number, cy: number): void {
+    const r = 3;
+    for (let dx = -r; dx <= r; dx++) {
+      for (let dy = -r; dy <= r; dy++) {
+        const x = cx + dx;
+        const y = cy + dy;
+        if (x >= 0 && x < this.width && y >= 0 && y < this.height) {
+          this.visited.add(`${x},${y}`);
+        }
+      }
+    }
+  }
+
+  toggleMinimap(): void {
+    this.showMinimap = !this.showMinimap;
   }
 
   getStatusHTML(game: Game): string {
