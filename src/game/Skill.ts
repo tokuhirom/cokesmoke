@@ -1,5 +1,38 @@
 import type { Game } from "./Game";
+import type { DungeonScene } from "./scenes/DungeonScene";
 import { OVERLOAD_DAMAGE } from "../constants";
+
+function hasLineOfSight(
+  scene: DungeonScene,
+  x0: number,
+  y0: number,
+  x1: number,
+  y1: number,
+): boolean {
+  // Bresenham's line to check for wall blocking
+  let x = x0;
+  let y = y0;
+  const dx = Math.abs(x1 - x0);
+  const dy = Math.abs(y1 - y0);
+  const sx = x0 < x1 ? 1 : -1;
+  const sy = y0 < y1 ? 1 : -1;
+  let err = dx - dy;
+
+  while (x !== x1 || y !== y1) {
+    const e2 = 2 * err;
+    if (e2 > -dy) {
+      err -= dy;
+      x += sx;
+    }
+    if (e2 < dx) {
+      err += dx;
+      y += sy;
+    }
+    if (x === x1 && y === y1) break;
+    if (!scene.dungeon.isTransparent(x, y)) return false;
+  }
+  return true;
+}
 
 export interface SkillDef {
   name: string;
@@ -71,33 +104,38 @@ export const SKILL_DEFS: SkillDef[] = [
   },
   {
     name: "射撃",
-    description: "前方3マスに矢を放つ",
+    description: "視界内の最も近い敵に矢",
     spCost: 10,
     execute: (game) => {
       const p = game.player;
-      const dx = p.lastDx;
-      const dy = p.lastDy;
-      if (dx === 0 && dy === 0) {
-        game.addMessage("方向が定まらない...");
-        return;
-      }
-      let hit = false;
-      for (let i = 1; i <= 3; i++) {
-        const tx = p.x + dx * i;
-        const ty = p.y + dy * i;
-        // Arrow stops at walls
-        const scene = game.dungeonScene;
-        if (scene && !scene.dungeon.isTransparent(tx, ty)) break;
-        const enemy = game.getEnemyAt(tx, ty);
-        if (enemy) {
-          const dmg = enemy.takeDamage(p.attack);
-          game.addMessage(`射撃！${enemy.name}に${dmg}ダメージ！`);
-          if (!enemy.isAlive()) game.addMessage(`${enemy.name}を倒した！`);
-          hit = true;
-          break; // Arrow hits first enemy
+      const scene = game.dungeonScene;
+      if (!scene) return;
+
+      // Find nearest visible enemy with clear line of sight
+      let bestEnemy: ReturnType<typeof game.getEnemyAt> = undefined;
+      let bestDist = Infinity;
+
+      for (const enemy of scene.enemies) {
+        if (!enemy.isAlive()) continue;
+        if (!p.visibleTiles.has(`${enemy.x},${enemy.y}`)) continue;
+
+        const dist = Math.abs(enemy.x - p.x) + Math.abs(enemy.y - p.y);
+        if (dist < bestDist) {
+          // Check line of sight (no walls blocking)
+          if (hasLineOfSight(scene, p.x, p.y, enemy.x, enemy.y)) {
+            bestDist = dist;
+            bestEnemy = enemy;
+          }
         }
       }
-      if (!hit) game.addMessage("射撃！...しかし何も当たらなかった");
+
+      if (bestEnemy) {
+        const dmg = bestEnemy.takeDamage(p.attack);
+        game.addMessage(`射撃！${bestEnemy.name}に${dmg}ダメージ！`);
+        if (!bestEnemy.isAlive()) game.addMessage(`${bestEnemy.name}を倒した！`);
+      } else {
+        game.addMessage("射撃！...しかし射程内に敵がいない");
+      }
     },
   },
   {
