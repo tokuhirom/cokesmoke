@@ -187,7 +187,9 @@ export function spawnItems(game: Game, floor: number, dungeonId?: string): ItemI
     return items;
   }
 
-  const count = 5 + floor;
+  // Scale item count with dungeon size (area ratio vs tutorial 35x20)
+  const areaScale = (scene.dungeon.width * scene.dungeon.height) / (35 * 20);
+  const count = Math.floor((5 + floor) * areaScale);
   for (let i = 0; i < Math.min(count, floorTiles.length); i++) {
     const idx = Math.floor(ROT.RNG.getUniform() * floorTiles.length);
     const [x, y] = floorTiles[idx];
