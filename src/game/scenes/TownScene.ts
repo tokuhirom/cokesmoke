@@ -3,7 +3,6 @@ import type { Scene } from "./Scene";
 import type { Game } from "../Game";
 import { MAP_WIDTH, MAP_HEIGHT, COLOR_PLAYER } from "../../constants";
 import { CRAFT_RECIPES, EQUIPMENT_DEFS, MATERIAL_DEFS, type CraftRecipe } from "../Equipment";
-import { DUNGEON_DEFS } from "./DungeonScene";
 
 export interface NpcDef {
   char: string;
@@ -395,17 +394,7 @@ export class TownScene implements Scene {
           const mat = MATERIAL_DEFS.find((md) => md.id === m.materialId);
           const have = p.getMaterialCount(m.materialId);
           const color = have >= m.count ? "#44ff88" : "#ff4444";
-          // Show dungeon source for materials player doesn't have enough of
-          let source = "";
-          if (have < m.count && mat) {
-            const dungeonNames = mat.dungeons
-              .map((did) => DUNGEON_DEFS.find((d) => d.id === did)?.name)
-              .filter(Boolean);
-            if (dungeonNames.length > 0) {
-              source = `(${dungeonNames.join(",")})`;
-            }
-          }
-          return `<span style="color:${color}">${mat?.name ?? m.materialId}${have}/${m.count}${source}</span>`;
+          return `<span style="color:${color}">${mat?.name ?? m.materialId}${have}/${m.count}</span>`;
         })
         .join(" ");
 
