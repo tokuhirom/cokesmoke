@@ -52,7 +52,7 @@ export function renderTitleScreen(worlds: SavedWorld[], tutorialDone = true): vo
     html += '<button class="menu-btn secondary" id="btn-tutorial">チュートリアル</button>';
   }
   html += '<button class="menu-btn secondary" id="btn-help">遊び方</button>';
-  html += `<div class="build-info">${__BUILD_TIME__} / ${__COMMIT_HASH__}</div>`;
+  html += `<div class="build-info">${__BUILD_TIME__} / ${__COMMIT_HASH__} <a href="https://github.com/tokuhirom/cokesmoke" target="_blank" style="color:#666;text-decoration:none">GitHub</a></div>`;
 
   overlay.innerHTML = html;
 }
