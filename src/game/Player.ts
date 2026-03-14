@@ -22,6 +22,7 @@ export interface JobDef {
   spRegenBonus: number; // extra SP regen per turn
   hungerCostMult: number; // multiplier for hunger cost (1.0 = normal)
   hpRegen: boolean; // passive HP regen
+  trapEvadeBonus: number; // extra trap evasion chance (0-1)
   initialSkills: string[]; // skill names to start with
 }
 
@@ -38,6 +39,7 @@ export const JOB_DEFS: JobDef[] = [
     spRegenBonus: 0,
     hungerCostMult: 1.0,
     hpRegen: false,
+    trapEvadeBonus: 0,
     initialSkills: [],
   },
   {
@@ -52,6 +54,7 @@ export const JOB_DEFS: JobDef[] = [
     spRegenBonus: 2,
     hungerCostMult: 1.0,
     hpRegen: false,
+    trapEvadeBonus: 0,
     initialSkills: ["ファイアボルト"],
   },
   {
@@ -66,12 +69,13 @@ export const JOB_DEFS: JobDef[] = [
     spRegenBonus: 0,
     hungerCostMult: 1.0,
     hpRegen: true,
+    trapEvadeBonus: 0,
     initialSkills: ["ヒール"],
   },
   {
     id: "thief",
     name: "盗賊",
-    description: "攻撃+2 満腹消費半減 スキル枠2",
+    description: "攻撃+2 満腹消費半減 罠回避+ スキル枠2",
     attackBonus: 2,
     defenseBonus: 0,
     hpBonus: 0,
@@ -80,6 +84,7 @@ export const JOB_DEFS: JobDef[] = [
     spRegenBonus: 0,
     hungerCostMult: 0.5,
     hpRegen: false,
+    trapEvadeBonus: 0.3,
     initialSkills: ["テレポート"],
   },
   {
@@ -94,6 +99,7 @@ export const JOB_DEFS: JobDef[] = [
     spRegenBonus: 0,
     hungerCostMult: 1.0,
     hpRegen: false,
+    trapEvadeBonus: 0,
     initialSkills: ["射撃"],
   },
 ];
@@ -200,6 +206,7 @@ export class Player extends Entity {
   spRegenBonus = 0;
   hungerCostMult = 1.0;
   hungerAccum = 0;
+  trapEvadeBonus = 0;
 
   // Goddess gift
   giftId: string | null = null;
@@ -235,6 +242,7 @@ export class Player extends Entity {
     this.spRegenBonus = job.spRegenBonus;
     this.hungerCostMult = job.hungerCostMult;
     if (job.hpRegen) this.hpRegen = true;
+    this.trapEvadeBonus = job.trapEvadeBonus;
     this.recalcStats();
   }
 

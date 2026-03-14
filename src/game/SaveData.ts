@@ -43,6 +43,7 @@ export interface SavedWorld {
   maxSkills?: number;
   spRegenBonus?: number;
   hungerCostMult?: number;
+  trapEvadeBonus?: number;
   // Goddess gift
   giftId?: string | null;
   // Max hunger (for gift that increases it)

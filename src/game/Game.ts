@@ -273,6 +273,7 @@ export class Game {
       this.player.maxSkills = saved.maxSkills ?? 3;
       this.player.spRegenBonus = saved.spRegenBonus ?? 0;
       this.player.hungerCostMult = saved.hungerCostMult ?? 1.0;
+      this.player.trapEvadeBonus = saved.trapEvadeBonus ?? 0;
     }
 
     // Restore gift
@@ -383,6 +384,7 @@ export class Game {
       maxSkills: this.player.maxSkills,
       spRegenBonus: this.player.spRegenBonus,
       hungerCostMult: this.player.hungerCostMult,
+      trapEvadeBonus: this.player.trapEvadeBonus,
       playerSkills: this.player.skills.map((s) => s.name),
       weaponId: this.player.weapon?.id ?? null,
       armorId: this.player.armor?.id ?? null,

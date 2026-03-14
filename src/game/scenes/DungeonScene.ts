@@ -71,20 +71,110 @@ export const DUNGEON_DEFS: DungeonDef[] = [
   },
 ];
 
+interface TrapDef {
+  id: string;
+  name: string;
+  char: string;
+  trigger: (scene: DungeonScene, game: Game) => void;
+}
+
+const TRAP_DEFS: TrapDef[] = [
+  {
+    id: "pitfall",
+    name: "落とし穴",
+    char: "^",
+    trigger: (scene, game) => {
+      const p = game.player;
+      const dmg = 5 + scene.currentFloor * 2;
+      p.hp = Math.max(0, p.hp - dmg);
+      p.deathCause = "落とし穴";
+      game.addMessage(`落とし穴だ！ ${dmg}ダメージを受け、下の階に落ちた！`);
+      if (p.hp <= 0) {
+        game.gameOver();
+        return;
+      }
+      // Fall to next floor if not the last
+      if (scene.currentFloor < scene.dungeonDef.floors) {
+        scene.saveFloorCache();
+        scene.currentFloor++;
+        const cached = scene.floorCache.get(scene.currentFloor);
+        if (cached) {
+          // Place on a random walkable tile (not in a wall)
+          const tiles = cached.dungeon.getFloorTiles();
+          const [fx, fy] = tiles[Math.floor(Math.random() * tiles.length)];
+          scene.loadFloorCache(scene.currentFloor, game, fx, fy);
+        } else {
+          scene.generateFloor(game);
+        }
+        game.render();
+      }
+    },
+  },
+  {
+    id: "arrow",
+    name: "矢の罠",
+    char: "^",
+    trigger: (_scene, game) => {
+      const p = game.player;
+      const dmg = 8 + Math.floor(Math.random() * 10);
+      p.hp = Math.max(0, p.hp - dmg);
+      p.deathCause = "矢の罠";
+      game.addMessage(`矢の罠だ！ ${dmg}ダメージ！`);
+      if (p.hp <= 0) {
+        game.gameOver();
+      }
+    },
+  },
+  {
+    id: "poison_gas",
+    name: "毒ガスの罠",
+    char: "^",
+    trigger: (_scene, game) => {
+      const p = game.player;
+      const dmg = p.takeElementalDamage(12, "poison", "毒ガスの罠");
+      game.addMessage(`毒ガスの罠だ！ ${dmg}ダメージ！`);
+      if (p.hp <= 0) {
+        game.gameOver();
+      }
+    },
+  },
+  {
+    id: "hunger",
+    name: "空腹の罠",
+    char: "^",
+    trigger: (_scene, game) => {
+      const p = game.player;
+      const loss = 30;
+      p.hunger = Math.max(0, p.hunger - loss);
+      game.addMessage(`空腹の罠だ！ 満腹度が${loss}減った！`);
+    },
+  },
+];
+
+interface Trap {
+  x: number;
+  y: number;
+  def: TrapDef;
+  revealed: boolean;
+  triggered: boolean;
+}
+
 interface FloorCache {
   dungeon: Dungeon;
   enemies: Enemy[];
   items: ItemInstance[];
+  traps: Trap[];
 }
 
 export class DungeonScene implements Scene {
   dungeon!: Dungeon;
   enemies: Enemy[] = [];
   items: ItemInstance[] = [];
+  traps: Trap[] = [];
   currentFloor = 1;
   dungeonDef: DungeonDef;
   isTutorial: boolean;
-  private floorCache: Map<number, FloorCache> = new Map();
+  floorCache: Map<number, FloorCache> = new Map();
 
   constructor(dungeonDef: DungeonDef, isTutorial = false) {
     this.dungeonDef = dungeonDef;
@@ -97,21 +187,23 @@ export class DungeonScene implements Scene {
     this.generateFloor(game);
   }
 
-  private saveFloorCache(): void {
+  saveFloorCache(): void {
     this.floorCache.set(this.currentFloor, {
       dungeon: this.dungeon,
       enemies: this.enemies,
       items: this.items,
+      traps: this.traps,
     });
   }
 
-  private loadFloorCache(floor: number, game: Game, spawnX: number, spawnY: number): boolean {
+  loadFloorCache(floor: number, game: Game, spawnX: number, spawnY: number): boolean {
     const cached = this.floorCache.get(floor);
     if (!cached) return false;
 
     this.dungeon = cached.dungeon;
     this.enemies = cached.enemies;
     this.items = cached.items;
+    this.traps = cached.traps;
     game.player.placeOnMap(spawnX, spawnY);
     this.computePlayerFOV(game);
     game.addMessage(`--- ${this.dungeonDef.name} ${this.currentFloor}階 ---`);
@@ -139,11 +231,49 @@ export class DungeonScene implements Scene {
     game.player.placeOnMap(this.dungeon.startX, this.dungeon.startY);
     this.enemies = spawnEnemies(game, this.currentFloor, this.dungeonDef);
     this.items = spawnItems(game, this.currentFloor, this.dungeonDef.id);
+    this.traps = this.isTutorial ? [] : this.spawnTraps();
     this.saveFloorCache();
     this.computePlayerFOV(game);
     if (this.currentFloor > 0) {
       game.addMessage(`--- ${this.dungeonDef.name} ${this.currentFloor}階 ---`);
     }
+  }
+
+  private spawnTraps(): Trap[] {
+    const traps: Trap[] = [];
+    const floorTiles = this.dungeon.getFloorTiles().filter(([x, y]) => {
+      if (x === this.dungeon.startX && y === this.dungeon.startY) return false;
+      if (x === this.dungeon.stairsX && y === this.dungeon.stairsY) return false;
+      return true;
+    });
+
+    const count = 2 + Math.floor(this.currentFloor * 0.5);
+    for (let i = 0; i < Math.min(count, floorTiles.length); i++) {
+      const idx = Math.floor(ROT.RNG.getUniform() * floorTiles.length);
+      const [x, y] = floorTiles[idx];
+      floorTiles.splice(idx, 1);
+      const def = TRAP_DEFS[Math.floor(ROT.RNG.getUniform() * TRAP_DEFS.length)];
+      traps.push({ x, y, def, revealed: false, triggered: false });
+    }
+    return traps;
+  }
+
+  private checkTrap(game: Game): void {
+    const p = game.player;
+    const trap = this.traps.find((t) => !t.triggered && t.x === p.x && t.y === p.y);
+    if (!trap) return;
+
+    // Evasion check: base 15% + thief bonus
+    const evadeChance = 0.15 + p.trapEvadeBonus;
+    if (Math.random() < evadeChance) {
+      trap.revealed = true;
+      game.addMessage(`${trap.def.name}を見つけたが、うまく避けた！`);
+      return;
+    }
+
+    trap.triggered = true;
+    trap.revealed = true;
+    trap.def.trigger(this, game);
   }
 
   computePlayerFOV(game: Game): void {
@@ -181,6 +311,9 @@ export class DungeonScene implements Scene {
 
     p.x = nx;
     p.y = ny;
+
+    this.checkTrap(game);
+    if (game.state !== "dungeon") return true; // died or fell to next floor
 
     this.pickupItem(game, p.x, p.y);
     this.endTurn(game);
@@ -425,6 +558,13 @@ export class DungeonScene implements Scene {
         }
 
         display.draw(x, y, ch, fg, bg);
+      }
+    }
+
+    // Draw revealed traps
+    for (const trap of this.traps) {
+      if (trap.revealed && !trap.triggered && player.visibleTiles.has(`${trap.x},${trap.y}`)) {
+        display.draw(trap.x, trap.y, trap.def.char, "#ff8800", null);
       }
     }
 
