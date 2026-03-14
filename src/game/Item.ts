@@ -1,7 +1,7 @@
 import * as ROT from "rot-js";
 import type { Game } from "./Game";
 import { SKILL_DEFS } from "./Skill";
-import { MATERIAL_DEFS } from "./Equipment";
+import { MATERIAL_DEFS, EQUIPMENT_DEFS } from "./Equipment";
 
 export interface ItemDef {
   char: string;
@@ -33,22 +33,18 @@ export const ITEM_DEFS: ItemDef[] = [
   },
   {
     char: "/",
-    name: "剣",
-    description: "攻撃力+3",
+    name: "木の剣",
+    description: "攻撃+3（装備品）",
     effect: (game) => {
-      game.player.baseAttack += 3;
-      game.player.recalcStats();
-      game.addMessage("剣を手に入れた！攻撃力+3");
+      game.player.equip(EQUIPMENT_DEFS["wooden_sword"]);
     },
   },
   {
     char: "[",
-    name: "鎧",
-    description: "防御力+2",
+    name: "革の鎧",
+    description: "防御+2（装備品）",
     effect: (game) => {
-      game.player.baseDefense += 2;
-      game.player.recalcStats();
-      game.addMessage("鎧を装備した！防御力+2");
+      game.player.equip(EQUIPMENT_DEFS["leather_armor"]);
     },
   },
   {
