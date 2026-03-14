@@ -10,7 +10,6 @@ import {
   renderProloguePage,
   renderGoddessScene,
   renderTutorialDialog,
-  showOverlay,
 } from "../ui/GameOverlays";
 import { Player, GIFT_DEFS } from "./Player";
 import { Companion } from "./Companion";
