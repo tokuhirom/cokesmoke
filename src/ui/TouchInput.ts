@@ -35,6 +35,16 @@ export class TouchInput {
 
       if (this.isInputBlocked()) return;
 
+      // Minimap toggle (Tab key, only in dungeon)
+      if (this.game.state === "dungeon" && e.key === "Tab") {
+        if (this.game.dungeonScene) {
+          this.game.dungeonScene.toggleMinimap();
+          this.game.render();
+        }
+        e.preventDefault();
+        return;
+      }
+
       // Skill keys: 1, 2, 3 (only in dungeon)
       if (this.game.state === "dungeon" && e.key >= "1" && e.key <= "3") {
         const idx = parseInt(e.key) - 1;

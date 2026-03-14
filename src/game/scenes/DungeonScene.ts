@@ -175,6 +175,7 @@ export class DungeonScene implements Scene {
   dungeonDef: DungeonDef;
   isTutorial: boolean;
   floorCache: Map<number, FloorCache> = new Map();
+  showMinimap = true;
 
   constructor(dungeonDef: DungeonDef, isTutorial = false) {
     this.dungeonDef = dungeonDef;
@@ -667,6 +668,67 @@ export class DungeonScene implements Scene {
     const psx = player.x - camX;
     const psy = player.y - camY;
     display.draw(psx, psy, player.char, COLOR_PLAYER, null);
+
+    this.renderMinimap(game, camX, camY);
+  }
+
+  private renderMinimap(game: Game, camX: number, camY: number): void {
+    const canvas = document.getElementById("minimap") as HTMLCanvasElement | null;
+    if (!canvas) return;
+
+    if (this.isTutorial || !this.showMinimap) {
+      canvas.style.display = "none";
+      return;
+    }
+
+    const dw = this.dungeon.width;
+    const dh = this.dungeon.height;
+    const scale = 2;
+    canvas.width = dw * scale;
+    canvas.height = dh * scale;
+    canvas.style.display = "block";
+    canvas.style.width = `${dw * scale}px`;
+    canvas.style.height = `${dh * scale}px`;
+
+    const ctx = canvas.getContext("2d")!;
+    ctx.fillStyle = "#0a0a14";
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+    const player = game.player;
+
+    // Draw explored tiles
+    for (let x = 0; x < dw; x++) {
+      for (let y = 0; y < dh; y++) {
+        const tile = this.dungeon.getTile(x, y);
+        if (!tile || !tile.explored) continue;
+
+        if (tile.char === "\u2588") {
+          ctx.fillStyle = "#2a2a44";
+        } else if (tile.char === ">" || tile.char === "<") {
+          ctx.fillStyle = "#ccaa00";
+        } else if (tile.char === "◎") {
+          ctx.fillStyle = "#aa8800";
+        } else if (tile.walkable) {
+          ctx.fillStyle = "#3a3a55";
+        } else {
+          continue;
+        }
+        ctx.fillRect(x * scale, y * scale, scale, scale);
+      }
+    }
+
+    // Draw viewport rectangle
+    ctx.strokeStyle = "rgba(150, 180, 255, 0.5)";
+    ctx.lineWidth = 1;
+    ctx.strokeRect(camX * scale, camY * scale, MAP_WIDTH * scale, MAP_HEIGHT * scale);
+
+    // Draw player
+    ctx.fillStyle = "#44ff44";
+    ctx.fillRect(player.x * scale, player.y * scale, scale, scale);
+  }
+
+  toggleMinimap(): void {
+    this.showMinimap = !this.showMinimap;
   }
 
   getStatusHTML(game: Game): string {

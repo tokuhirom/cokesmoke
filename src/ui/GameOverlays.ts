@@ -137,6 +137,7 @@ export function renderHelpScreen(): void {
         <tr><td>スキル</td><td>1-3キー / スキルボタン</td></tr>
         <tr><td>持ち物</td><td>iキー / 持物ボタン</td></tr>
         <tr><td>攻撃</td><td>敵の方向に移動（斜めもOK）</td></tr>
+        <tr><td>地図</td><td>Tabキー（迷宮内ミニマップ表示切替）</td></tr>
       </table>
 
       <h2>ワールドマップ</h2>

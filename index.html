@@ -46,6 +46,17 @@
         justify-content: center;
         overflow: hidden;
         width: 100%;
+        position: relative;
+      }
+      #minimap {
+        position: absolute;
+        top: 4px;
+        right: 4px;
+        opacity: 0.6;
+        pointer-events: none;
+        border: 1px solid rgba(100, 140, 200, 0.3);
+        display: none;
+        image-rendering: pixelated;
       }
       #game-container canvas {
         max-width: 100%;
@@ -317,7 +328,9 @@
   <body>
     <div id="overlay"><!-- filled by JS --></div>
     <div id="status-bar"></div>
-    <div id="game-container"></div>
+    <div id="game-container">
+      <canvas id="minimap"></canvas>
+    </div>
     <div id="message-log"></div>
     <div id="controls-row">
       <div id="dpad"></div>

@@ -25,6 +25,12 @@ export class Display {
       game.currentScene.render(this.rotDisplay, game);
     }
 
+    // Hide minimap when not in dungeon
+    if (game.state !== "dungeon") {
+      const minimap = document.getElementById("minimap");
+      if (minimap) (minimap as HTMLElement).style.display = "none";
+    }
+
     this.renderStatusBar(game);
     this.renderMessages(game);
     game.input.updateSkillButtons();
