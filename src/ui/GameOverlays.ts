@@ -39,7 +39,7 @@ export function renderTitleScreen(worlds: SavedWorld[], tutorialDone = true): vo
       html += `
         <div style="display:flex;gap:4px;margin:4px 0">
           <button class="menu-btn" style="flex:1;font-size:13px;padding:8px" id="load-${w.id}">
-            ${w.name}<br><span style="font-size:10px;color:#888">${date} ${time} HP:${w.playerHp}</span>
+            ${w.name}<br><span style="font-size:10px;color:#888">${JOB_DEFS.find((j) => j.id === w.jobId)?.name ?? "—"} ${date} ${time} HP:${w.playerHp}</span>
           </button>
           <button class="menu-btn secondary" style="padding:8px;font-size:11px" id="del-${w.id}">×</button>
         </div>
