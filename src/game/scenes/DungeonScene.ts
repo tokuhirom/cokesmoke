@@ -733,8 +733,6 @@ export class DungeonScene implements Scene {
 
   getStatusHTML(game: Game): string {
     const p = game.player;
-    const hpBar = makeBar(p.hp, p.maxHp, "\u2588", "\u2591");
-    const spBar = makeBar(p.sp, p.maxSp, "=", "-");
     const armorStr = p.armorTurns > 0 ? ' <span style="color:#44ff88">[バリア]</span>' : "";
     const job = JOB_DEFS.find((j) => j.id === p.jobId);
     const jobStr = job ? `${job.name} ` : "";
@@ -773,10 +771,4 @@ export class DungeonScene implements Scene {
       `ATK:${p.attack} DEF:${p.defense}${resistStr}`
     );
   }
-}
-
-function makeBar(current: number, max: number, fillChar: string, emptyChar: string): string {
-  const width = 8;
-  const filled = Math.round((current / max) * width);
-  return fillChar.repeat(filled) + emptyChar.repeat(width - filled);
 }
