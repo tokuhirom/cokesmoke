@@ -85,7 +85,7 @@ export const JOB_DEFS: JobDef[] = [
   {
     id: "ranger",
     name: "狩人",
-    description: "攻撃+3 遠距離攻撃習得済",
+    description: "攻撃+3 射撃習得済",
     attackBonus: 3,
     defenseBonus: 0,
     hpBonus: 0,
@@ -94,7 +94,7 @@ export const JOB_DEFS: JobDef[] = [
     spRegenBonus: 0,
     hungerCostMult: 1.0,
     hpRegen: false,
-    initialSkills: ["ファイアボルト"],
+    initialSkills: ["射撃"],
   },
 ];
 

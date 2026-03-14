@@ -70,6 +70,37 @@ export const SKILL_DEFS: SkillDef[] = [
     },
   },
   {
+    name: "射撃",
+    description: "前方3マスに矢を放つ",
+    spCost: 10,
+    execute: (game) => {
+      const p = game.player;
+      const dx = p.lastDx;
+      const dy = p.lastDy;
+      if (dx === 0 && dy === 0) {
+        game.addMessage("方向が定まらない...");
+        return;
+      }
+      let hit = false;
+      for (let i = 1; i <= 3; i++) {
+        const tx = p.x + dx * i;
+        const ty = p.y + dy * i;
+        // Arrow stops at walls
+        const scene = game.dungeonScene;
+        if (scene && !scene.dungeon.isTransparent(tx, ty)) break;
+        const enemy = game.getEnemyAt(tx, ty);
+        if (enemy) {
+          const dmg = enemy.takeDamage(p.attack);
+          game.addMessage(`射撃！${enemy.name}に${dmg}ダメージ！`);
+          if (!enemy.isAlive()) game.addMessage(`${enemy.name}を倒した！`);
+          hit = true;
+          break; // Arrow hits first enemy
+        }
+      }
+      if (!hit) game.addMessage("射撃！...しかし何も当たらなかった");
+    },
+  },
+  {
     name: "ヒール",
     description: "HP25回復",
     spCost: 15,
