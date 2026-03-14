@@ -97,6 +97,14 @@ export const TOWN_DEFS: TownDef[] = [
         ],
         crafterId: "merchant",
       },
+      {
+        char: "I",
+        name: "宿屋",
+        color: "#ffaa88",
+        x: 18,
+        y: 4,
+        dialog: ["お疲れさま！一晩泊まっていくかい？"],
+      },
     ],
   },
   {
@@ -135,6 +143,14 @@ export const TOWN_DEFS: TownDef[] = [
         y: 7,
         dialog: ["我らの里へようこそ。", "リザは腕の立つ戦士だ。力になってくれるだろう。"],
       },
+      {
+        char: "I",
+        name: "宿屋",
+        color: "#ffaa88",
+        x: 20,
+        y: 4,
+        dialog: ["旅人か。ゆっくり休んでいけ。"],
+      },
     ],
   },
   {
@@ -171,7 +187,7 @@ export const TOWN_DEFS: TownDef[] = [
           "あなたの村に行ってもいいかしら？",
         ],
         crafterId: "elf_enchanter",
-        onInteract: (game: Game) => {
+        onInteract: (game: Game): void => {
           if (!game.recruitedNpcs.some((n) => n.crafterId === "elf_enchanter")) {
             const npcDef: NpcDef = {
               char: "S",
@@ -185,6 +201,14 @@ export const TOWN_DEFS: TownDef[] = [
             game.recruitNpc(npcDef);
           }
         },
+      },
+      {
+        char: "I",
+        name: "宿屋",
+        color: "#ffaa88",
+        x: 20,
+        y: 4,
+        dialog: ["森の恵みで癒してあげましょう。"],
       },
     ],
   },
@@ -236,6 +260,14 @@ export const TOWN_DEFS: TownDef[] = [
             game.recruitNpc(npcDef);
           }
         },
+      },
+      {
+        char: "I",
+        name: "宿屋",
+        color: "#ffaa88",
+        x: 20,
+        y: 4,
+        dialog: ["ドワーフの酒で疲れを吹き飛ばしてやるぜ！"],
       },
     ],
   },
@@ -336,6 +368,12 @@ export class TownScene implements Scene {
     // Merchant in starting village: show shop menu (craft + disassemble)
     if (npc.name === "商人" && this.townDef.id === "home") {
       this.openShopMenu(game, npc);
+      return;
+    }
+
+    // Inn: show inn menu
+    if (npc.name === "宿屋") {
+      game.showInnMenu();
       return;
     }
 

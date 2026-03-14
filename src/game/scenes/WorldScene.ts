@@ -507,7 +507,9 @@ export class WorldScene implements Scene {
     if (enemy.hp <= 0) {
       enemy.alive = false;
       enemy.respawnTimer = 30 + Math.floor(Math.random() * 20);
-      game.addMessage(`${enemy.def.name}を倒した！`);
+      const goldDrop = 3 + Math.floor(Math.random() * 5);
+      game.player.gold += goldDrop;
+      game.addMessage(`${enemy.def.name}を倒した！ ${goldDrop}G入手`);
       return;
     }
 

@@ -47,6 +47,8 @@ export interface SavedWorld {
   giftId?: string | null;
   // Max hunger (for gift that increases it)
   playerMaxHunger?: number;
+  // Gold
+  playerGold?: number;
   // Consumable inventory (name → count)
   consumables?: Record<string, number>;
 }

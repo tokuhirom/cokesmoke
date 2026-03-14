@@ -285,6 +285,9 @@ export class Game {
       this.player.maxHunger = saved.playerMaxHunger ?? this.player.maxHunger;
     }
 
+    // Restore gold
+    this.player.gold = saved.playerGold ?? 0;
+
     // Restore owned equipment
     this.player.ownedEquipment = [];
     for (const eqId of saved.ownedEquipmentIds ?? []) {
@@ -385,6 +388,7 @@ export class Game {
       ownedEquipmentIds: this.player.ownedEquipment.filter((e) => !e.isArtifact).map((e) => e.id),
       artifacts: this.player.ownedEquipment.filter((e) => e.isArtifact),
       giftId: this.player.giftId,
+      playerGold: this.player.gold,
       materials: Object.fromEntries(this.player.materials),
       consumables: Object.fromEntries(
         [...this.player.consumables].map(([name, entry]) => [name, entry.count]),
@@ -517,6 +521,49 @@ export class Game {
 
     document.getElementById("equip-close")!.addEventListener("click", () => {
       hideOverlay();
+      this.render();
+    });
+  }
+
+  showInnMenu(): void {
+    const p = this.player;
+    const cost = 20;
+    const overlay = document.getElementById("overlay")!;
+    overlay.classList.remove("hidden");
+
+    const canAfford = p.gold >= cost;
+    const needsRest = p.hp < p.maxHp || p.hunger < p.maxHunger;
+
+    let html = '<div class="tutorial-dialog">';
+    html += "<p>宿屋</p>";
+    html += `<p style="font-size:12px;color:#aaa">所持金: ${p.gold}G</p>`;
+
+    if (!needsRest) {
+      html += '<p style="font-size:12px;color:#888">体調は万全だ。休む必要はない。</p>';
+    } else if (!canAfford) {
+      html += `<p style="font-size:12px;color:#ff6644">宿泊費${cost}Gが足りない...</p>`;
+    }
+
+    html += `<button class="menu-btn${canAfford && needsRest ? "" : " secondary"}" id="inn-stay" ${canAfford && needsRest ? "" : "disabled"}>`;
+    html += `宿泊する（${cost}G）`;
+    html += "</button>";
+    html += '<button class="menu-btn secondary" id="inn-close">やめる</button>';
+    html += "</div>";
+    overlay.innerHTML = html;
+
+    document.getElementById("inn-stay")?.addEventListener("click", () => {
+      p.gold -= cost;
+      p.hp = p.maxHp;
+      p.hunger = p.maxHunger;
+      p.sp = p.maxSp;
+      this.addMessage("宿屋でぐっすり眠った！HP・MP・満腹度が全回復！");
+      overlay.classList.add("hidden");
+      this.saveCurrentWorld();
+      this.render();
+    });
+
+    document.getElementById("inn-close")!.addEventListener("click", () => {
+      overlay.classList.add("hidden");
       this.render();
     });
   }

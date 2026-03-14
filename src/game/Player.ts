@@ -206,6 +206,9 @@ export class Player extends Entity {
   giftResistances: Partial<Record<Element, number>> = {};
   hpRegen = false;
 
+  // Gold
+  gold = 0;
+
   // Death cause tracking
   deathCause = "";
 

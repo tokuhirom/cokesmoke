@@ -194,7 +194,9 @@ export class DungeonScene implements Scene {
     const dmg = enemy.takeDamage(totalAtk);
     game.addMessage(`${enemy.name}に${dmg}ダメージ！`);
     if (!enemy.isAlive()) {
-      game.addMessage(`${enemy.name}を倒した！`);
+      const goldDrop = enemy.isBoss ? 50 + this.currentFloor * 10 : 5 + this.currentFloor * 2;
+      p.gold += goldDrop;
+      game.addMessage(`${enemy.name}を倒した！ ${goldDrop}G入手`);
       if (enemy.isBoss) {
         const artifact = generateArtifact(this.currentFloor);
         p.ownedEquipment.push(artifact);
@@ -485,6 +487,7 @@ export class DungeonScene implements Scene {
     return (
       `<span class="hp-color">HP:${hpBar} ${p.hp}/${p.maxHp}</span>  ` +
       `<span class="fuel-color">満腹:${p.hunger}</span>  ` +
+      `<span style="color:#ffdd44">${p.gold}G</span>  ` +
       `<span class="floor-color">${floorLabel}</span>${armorStr}${weaponStr}<br>` +
       `<span class="sp-color">MP:[${spBar}] ${p.sp}/${p.maxSp}</span>` +
       `  ATK:${p.attack} DEF:${p.defense}${resistStr}`
