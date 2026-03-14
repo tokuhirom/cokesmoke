@@ -33,11 +33,13 @@ export function renderTitleScreen(worlds: SavedWorld[], tutorialDone = true): vo
   if (worlds.length > 0) {
     html += '<div style="width:100%;max-width:300px;margin:8px 0">';
     for (const w of worlds) {
-      const date = new Date(w.lastPlayed).toLocaleDateString("ja-JP");
+      const d = new Date(w.lastPlayed);
+      const date = d.toLocaleDateString("ja-JP");
+      const time = d.toLocaleTimeString("ja-JP", { hour: "2-digit", minute: "2-digit" });
       html += `
         <div style="display:flex;gap:4px;margin:4px 0">
           <button class="menu-btn" style="flex:1;font-size:13px;padding:8px" id="load-${w.id}">
-            ${w.name}<br><span style="font-size:10px;color:#888">${date} HP:${w.playerHp}</span>
+            ${w.name}<br><span style="font-size:10px;color:#888">${date} ${time} HP:${w.playerHp}</span>
           </button>
           <button class="menu-btn secondary" style="padding:8px;font-size:11px" id="del-${w.id}">×</button>
         </div>
