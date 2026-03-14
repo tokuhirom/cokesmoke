@@ -47,7 +47,7 @@ export function renderTitleScreen(worlds: SavedWorld[], tutorialDone = true): vo
   }
 
   if (canCreateWorld()) {
-    html += '<button class="menu-btn" id="btn-new-world">新しい世界を作る</button>';
+    html += '<button class="menu-btn" id="btn-new-world">新しい異世界人を召喚する</button>';
   }
 
   if (!tutorialDone) {
@@ -64,8 +64,8 @@ export function renderWorldNameInput(): void {
   const count = listWorlds().length;
   overlay.innerHTML = `
     <div class="tutorial-dialog">
-      <p>世界の名前を入力</p>
-      <input type="text" id="world-name-input" value="世界${count + 1}"
+      <p>召喚する異世界人の名前を入力</p>
+      <input type="text" id="world-name-input" value="転生者${count + 1}"
         style="background:#0f3460;color:#e94560;border:1px solid #e94560;padding:8px;
         font-family:monospace;font-size:14px;width:200px;text-align:center;border-radius:4px">
       <br>
