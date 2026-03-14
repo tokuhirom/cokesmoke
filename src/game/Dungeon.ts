@@ -104,7 +104,7 @@ export class Dungeon {
       }
     });
 
-    const pipeCount = Math.floor(floorTiles.length * 0.03);
+    const pipeCount = Math.floor(floorTiles.length * 0.01);
     for (let i = 0; i < pipeCount; i++) {
       const idx = Math.floor(ROT.RNG.getUniform() * floorTiles.length);
       const [px, py] = floorTiles[idx];
