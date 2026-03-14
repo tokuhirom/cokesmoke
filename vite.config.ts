@@ -20,4 +20,7 @@ export default defineConfig({
     __BUILD_TIME__: JSON.stringify(buildTime),
     __COMMIT_HASH__: JSON.stringify(commitHash),
   },
+  test: {
+    environment: "node",
+  },
 });

@@ -2,6 +2,8 @@ import * as ROT from "rot-js";
 import { Entity } from "./Entity";
 import type { Game } from "./Game";
 import type { DungeonDef } from "./scenes/DungeonScene";
+import type { Element } from "./Equipment";
+import { ELEMENT_NAMES } from "./Equipment";
 import { COLOR_ENEMY } from "../constants";
 
 export interface EnemyDef {
@@ -12,13 +14,32 @@ export interface EnemyDef {
   defense: number;
   speed: number;
   isBoss: boolean;
+  element?: Element;
 }
 
 export const ENEMY_DEFS: Record<string, EnemyDef> = {
   g: { char: "g", name: "ゴブリン", hp: 30, attack: 8, defense: 4, speed: 0.5, isBoss: false },
-  s: { char: "s", name: "スライム", hp: 12, attack: 5, defense: 1, speed: 2, isBoss: false },
+  s: {
+    char: "s",
+    name: "スライム",
+    hp: 12,
+    attack: 5,
+    defense: 1,
+    speed: 2,
+    isBoss: false,
+    element: "poison",
+  },
   O: { char: "O", name: "オーク", hp: 50, attack: 12, defense: 3, speed: 1, isBoss: false },
-  D: { char: "D", name: "ドラゴン", hp: 100, attack: 15, defense: 6, speed: 1, isBoss: true },
+  D: {
+    char: "D",
+    name: "ドラゴン",
+    hp: 100,
+    attack: 15,
+    defense: 6,
+    speed: 1,
+    isBoss: true,
+    element: "fire",
+  },
   // Bosses per dungeon
   G: {
     char: "G",
@@ -29,20 +50,49 @@ export const ENEMY_DEFS: Record<string, EnemyDef> = {
     speed: 0.5,
     isBoss: true,
   },
-  T: { char: "T", name: "トレント", hp: 70, attack: 12, defense: 5, speed: 0.5, isBoss: true },
-  R: { char: "R", name: "炎竜", hp: 90, attack: 14, defense: 6, speed: 1, isBoss: true },
-  A: { char: "A", name: "深淵の王", hp: 150, attack: 18, defense: 8, speed: 1, isBoss: true },
+  T: {
+    char: "T",
+    name: "トレント",
+    hp: 70,
+    attack: 12,
+    defense: 5,
+    speed: 0.5,
+    isBoss: true,
+    element: "poison",
+  },
+  R: {
+    char: "R",
+    name: "炎竜",
+    hp: 90,
+    attack: 14,
+    defense: 6,
+    speed: 1,
+    isBoss: true,
+    element: "fire",
+  },
+  A: {
+    char: "A",
+    name: "深淵の王",
+    hp: 150,
+    attack: 18,
+    defense: 8,
+    speed: 1,
+    isBoss: true,
+    element: "lightning",
+  },
 };
 
 export class Enemy extends Entity {
   speed: number;
   isBoss: boolean;
   awakened = false;
+  element?: Element;
 
   constructor(game: Game, def: EnemyDef) {
     super(game, def.char, COLOR_ENEMY, def.name, def.hp, def.attack, def.defense);
     this.speed = def.speed;
     this.isBoss = def.isBoss;
+    this.element = def.element;
   }
 
   act(): void {
@@ -105,8 +155,20 @@ export class Enemy extends Entity {
 
   private attackPlayer(): void {
     const player = this.game.player;
-    const dmg = player.takeDamage(this.attack);
-    this.game.addMessage(`${this.name}の攻撃！ ${dmg}ダメージ`);
+    let dmg: number;
+    if (this.element) {
+      dmg = player.takeElementalDamage(this.attack, this.element, this.name);
+      const elemName = ELEMENT_NAMES[this.element];
+      if (dmg > 0) {
+        const resist = player.getResistance(this.element);
+        const resistMsg = resist > 0 ? `（${elemName}耐性で軽減）` : "";
+        this.game.addMessage(`${this.name}の${elemName}攻撃！ ${dmg}ダメージ${resistMsg}`);
+      }
+    } else {
+      player.deathCause = this.name;
+      dmg = player.takeDamage(this.attack);
+      this.game.addMessage(`${this.name}の攻撃！ ${dmg}ダメージ`);
+    }
     if (!player.isAlive()) {
       this.game.gameOver();
     }

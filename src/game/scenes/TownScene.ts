@@ -274,7 +274,10 @@ export class TownScene implements Scene {
   }
 
   private buildNpcList(game: Game): void {
-    this.activeNpcs = [...this.townDef.npcs];
+    // Filter out recruited NPCs from their original town
+    this.activeNpcs = this.townDef.npcs.filter(
+      (npc) => !game.recruitedNpcs.some((r) => r.name === npc.name),
+    );
 
     // Add recruited NPCs to starting village
     if (this.townDef.id === "home") {

@@ -34,7 +34,7 @@ export const ITEM_DEFS: ItemDef[] = [
   {
     char: "/",
     name: "木の剣",
-    description: "攻撃+3（装備品）",
+    description: "攻撃+2（装備品）",
     effect: (game) => {
       game.player.equip(EQUIPMENT_DEFS["wooden_sword"]);
     },
@@ -42,7 +42,7 @@ export const ITEM_DEFS: ItemDef[] = [
   {
     char: "[",
     name: "革の鎧",
-    description: "防御+2（装備品）",
+    description: "防御+1（装備品）",
     effect: (game) => {
       game.player.equip(EQUIPMENT_DEFS["leather_armor"]);
     },

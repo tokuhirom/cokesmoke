@@ -1,6 +1,18 @@
 import { Display } from "../ui/Display";
 import { TouchInput } from "../ui/TouchInput";
-import { Player } from "./Player";
+import {
+  hideOverlay,
+  renderTitleScreen,
+  renderWorldNameInput,
+  renderGiftSelection,
+  renderHelpScreen,
+  renderEquipMenu,
+  renderProloguePage,
+  renderGoddessScene,
+  renderTutorialDialog,
+  showOverlay,
+} from "../ui/GameOverlays";
+import { Player, GIFT_DEFS } from "./Player";
 import { Companion } from "./Companion";
 import { TutorialManager } from "./Tutorial";
 import { SKILL_DEFS } from "./Skill";
@@ -78,11 +90,35 @@ export class Game {
     return this.dungeonScene?.currentFloor ?? 0;
   }
 
+  // --- Lifecycle ---
+
   init(): void {
     this.display = new Display();
     this.input = new TouchInput(this);
     this.showTitle();
   }
+
+  isPlayable(): boolean {
+    return this.state === "world" || this.state === "town" || this.state === "dungeon";
+  }
+
+  addMessage(msg: string): void {
+    this.messages.push(msg);
+    if (this.messages.length > 50) this.messages.shift();
+  }
+
+  render(): void {
+    this.display.render(this);
+
+    if (this.tutorial?.active && !this.tutorial.pendingDialog) {
+      this.tutorial.check(this);
+      if (this.tutorial.pendingDialog) {
+        this.showTutorialDialog();
+      }
+    }
+  }
+
+  // --- Title / New World ---
 
   private isTutorialDone(): boolean {
     try {
@@ -100,59 +136,18 @@ export class Game {
     }
   }
 
-  isPlayable(): boolean {
-    return this.state === "world" || this.state === "town" || this.state === "dungeon";
-  }
-
   showTitle(): void {
     this.state = "title";
-    const overlay = document.getElementById("overlay")!;
-    overlay.classList.remove("hidden");
-
-    const worlds = listWorlds();
     const tutorialDone = this.isTutorialDone();
-
-    let html = `
-      <h1>異世界迷宮録</h1>
-      <div class="subtitle">Isekai Dungeon Crawl</div>
-    `;
-
-    // Existing worlds
-    if (worlds.length > 0) {
-      html += '<div style="width:100%;max-width:300px;margin:8px 0">';
-      for (const w of worlds) {
-        const date = new Date(w.lastPlayed).toLocaleDateString("ja-JP");
-        html += `
-          <div style="display:flex;gap:4px;margin:4px 0">
-            <button class="menu-btn" style="flex:1;font-size:13px;padding:8px" id="load-${w.id}">
-              ${w.name}<br><span style="font-size:10px;color:#888">${date} HP:${w.playerHp}</span>
-            </button>
-            <button class="menu-btn secondary" style="padding:8px;font-size:11px" id="del-${w.id}">×</button>
-          </div>
-        `;
-      }
-      html += "</div>";
-    }
-
-    // New world button
-    if (canCreateWorld()) {
-      html += '<button class="menu-btn" id="btn-new-world">新しい世界を作る</button>';
-    }
-
-    if (!tutorialDone) {
-      html += '<button class="menu-btn secondary" id="btn-tutorial">チュートリアル</button>';
-    }
-    html += '<button class="menu-btn secondary" id="btn-help">遊び方</button>';
-    html += `<div class="build-info">${__BUILD_TIME__} / ${__COMMIT_HASH__}</div>`;
-
-    overlay.innerHTML = html;
+    const worlds = listWorlds();
+    renderTitleScreen(worlds, tutorialDone);
 
     // Wire up events
     for (const w of worlds) {
-      document.getElementById(`load-${w.id}`)!.addEventListener("click", () => {
+      document.getElementById(`load-${w.id}`)?.addEventListener("click", () => {
         this.loadWorld(w);
       });
-      document.getElementById(`del-${w.id}`)!.addEventListener("click", () => {
+      document.getElementById(`del-${w.id}`)?.addEventListener("click", () => {
         if (confirm(`「${w.name}」を削除しますか？`)) {
           deleteWorld(w.id);
           this.showTitle();
@@ -161,34 +156,23 @@ export class Game {
     }
 
     if (canCreateWorld()) {
-      document.getElementById("btn-new-world")!.addEventListener("click", () => {
+      document.getElementById("btn-new-world")?.addEventListener("click", () => {
         this.showWorldNameInput();
       });
     }
 
     if (!tutorialDone) {
-      document.getElementById("btn-tutorial")!.addEventListener("click", () => {
+      document.getElementById("btn-tutorial")?.addEventListener("click", () => {
         this.showPrologue();
       });
     }
-    document.getElementById("btn-help")!.addEventListener("click", () => {
+    document.getElementById("btn-help")?.addEventListener("click", () => {
       this.showHelp();
     });
   }
 
   private showWorldNameInput(): void {
-    const overlay = document.getElementById("overlay")!;
-    overlay.innerHTML = `
-      <div class="tutorial-dialog">
-        <p>世界の名前を入力</p>
-        <input type="text" id="world-name-input" value="世界${listWorlds().length + 1}"
-          style="background:#0f3460;color:#e94560;border:1px solid #e94560;padding:8px;
-          font-family:monospace;font-size:14px;width:200px;text-align:center;border-radius:4px">
-        <br>
-        <button class="menu-btn" id="btn-create-world" style="margin-top:12px">作成</button>
-        <button class="menu-btn secondary" id="btn-cancel-create">戻る</button>
-      </div>
-    `;
+    renderWorldNameInput();
 
     document.getElementById("btn-create-world")!.addEventListener("click", () => {
       const input = document.getElementById("world-name-input") as HTMLInputElement;
@@ -209,24 +193,46 @@ export class Game {
     this.recruitedNpcs = [];
     this.player = new Player(this);
     this.tutorial = null;
+
+    this.showGiftSelection(name, seed);
+  }
+
+  private showGiftSelection(worldName: string, seed: number): void {
+    renderGiftSelection();
+
+    for (const gift of GIFT_DEFS) {
+      document.getElementById(`gift-${gift.id}`)!.addEventListener("click", () => {
+        this.player.giftId = gift.id;
+        gift.apply(this.player);
+        this.finishWorldCreation(worldName, seed);
+      });
+    }
+  }
+
+  private finishWorldCreation(name: string, seed: number): void {
     this.messages = ["目が覚めた...ここは始まりの村の近くだ。"];
     this.worldScene = new WorldScene(seed);
     this.currentScene = this.worldScene;
     this.state = "world";
-    this.hideOverlay();
+    hideOverlay();
     this.worldScene.onEnter(this);
 
-    // Save immediately
+    const gift = GIFT_DEFS.find((g) => g.id === this.player.giftId);
+    if (gift) {
+      this.addMessage(`女神の贈り物「${gift.name}」を授かった！`);
+    }
+
     this.saveCurrentWorld(name);
     this.render();
   }
 
+  // --- Save / Load ---
+
   private loadWorld(saved: SavedWorld): void {
-    this.hideOverlay();
+    hideOverlay();
     this.currentWorldId = saved.id;
     this.clearedDungeons = new Set(saved.clearedDungeons ?? []);
 
-    // Restore player
     this.player = new Player(this);
     this.player.hp = saved.playerHp;
     this.player.maxHp = saved.playerMaxHp;
@@ -236,50 +242,59 @@ export class Game {
     this.player.baseAttack = saved.playerBaseAttack;
     this.player.baseDefense = saved.playerBaseDefense;
 
-    // Restore equipment
-    // Restore owned equipment inventory
+    // Restore gift
+    if (saved.giftId) {
+      this.player.giftId = saved.giftId;
+      const gift = GIFT_DEFS.find((g) => g.id === saved.giftId);
+      if (gift) gift.apply(this.player);
+      this.player.baseAttack = saved.playerBaseAttack;
+      this.player.baseDefense = saved.playerBaseDefense;
+      this.player.baseSp = saved.playerBaseSp;
+      this.player.maxHp = saved.playerMaxHp;
+      this.player.maxHunger = saved.playerMaxHunger ?? this.player.maxHunger;
+    }
+
+    // Restore owned equipment
     this.player.ownedEquipment = [];
     for (const eqId of saved.ownedEquipmentIds ?? []) {
       if (EQUIPMENT_DEFS[eqId]) {
         this.player.ownedEquipment.push(EQUIPMENT_DEFS[eqId]);
       }
     }
+    for (const artifact of saved.artifacts ?? []) {
+      this.player.ownedEquipment.push(artifact);
+    }
 
-    if (saved.weaponId && EQUIPMENT_DEFS[saved.weaponId]) {
-      this.player.weapon = EQUIPMENT_DEFS[saved.weaponId];
-      // Ensure equipped items are in owned list
-      if (!this.player.ownedEquipment.some((e) => e.id === saved.weaponId)) {
-        this.player.ownedEquipment.push(EQUIPMENT_DEFS[saved.weaponId!]);
-      }
-    }
-    if (saved.armorId && EQUIPMENT_DEFS[saved.armorId]) {
-      this.player.armor = EQUIPMENT_DEFS[saved.armorId];
-      if (!this.player.ownedEquipment.some((e) => e.id === saved.armorId)) {
-        this.player.ownedEquipment.push(EQUIPMENT_DEFS[saved.armorId!]);
-      }
-    }
-    if (saved.accessoryId && EQUIPMENT_DEFS[saved.accessoryId]) {
-      this.player.accessory = EQUIPMENT_DEFS[saved.accessoryId];
-      if (!this.player.ownedEquipment.some((e) => e.id === saved.accessoryId)) {
-        this.player.ownedEquipment.push(EQUIPMENT_DEFS[saved.accessoryId!]);
+    // Restore equipped items
+    const findEquip = (id: string | null) => {
+      if (!id) return null;
+      return EQUIPMENT_DEFS[id] ?? this.player.ownedEquipment.find((e) => e.id === id) ?? null;
+    };
+
+    for (const slot of ["weapon", "armor", "accessory"] as const) {
+      const slotId = saved[`${slot}Id`];
+      if (slotId) {
+        const eq = findEquip(slotId);
+        if (eq) {
+          this.player[slot] = eq;
+          if (!this.player.ownedEquipment.some((e) => e.id === slotId)) {
+            this.player.ownedEquipment.push(eq);
+          }
+        }
       }
     }
     this.player.recalcStats();
 
-    // Restore materials
+    // Restore materials & skills
     this.player.materials = new Map(Object.entries(saved.materials ?? {}));
-
-    // Restore skills
     this.player.skills = [];
     for (const skillName of saved.playerSkills ?? []) {
       const skill = SKILL_DEFS.find((s) => s.name === skillName);
       if (skill) this.player.skills.push(skill);
     }
 
-    // Restore companion
+    // Restore companion & NPCs
     this.companion = saved.hasCompanion ? new Companion(this) : null;
-
-    // Restore recruited NPCs
     this.recruitedNpcs = (saved.recruitedNpcs ?? []).map(deserializeNpc);
 
     // Restore world
@@ -292,8 +307,6 @@ export class Game {
     this.worldScene.playerWorldX = saved.worldX;
     this.worldScene.playerWorldY = saved.worldY;
     this.player.placeOnMap(saved.worldX, saved.worldY);
-
-    // Restore dropped loots
     this.worldScene.droppedLoots = saved.droppedLoots ?? [];
 
     this.render();
@@ -318,11 +331,14 @@ export class Game {
       playerHunger: this.player.hunger,
       playerBaseAttack: this.player.baseAttack,
       playerBaseDefense: this.player.baseDefense,
+      playerMaxHunger: this.player.maxHunger,
       playerSkills: this.player.skills.map((s) => s.name),
       weaponId: this.player.weapon?.id ?? null,
       armorId: this.player.armor?.id ?? null,
       accessoryId: this.player.accessory?.id ?? null,
-      ownedEquipmentIds: this.player.ownedEquipment.map((e) => e.id),
+      ownedEquipmentIds: this.player.ownedEquipment.filter((e) => !e.isArtifact).map((e) => e.id),
+      artifacts: this.player.ownedEquipment.filter((e) => e.isArtifact),
+      giftId: this.player.giftId,
       materials: Object.fromEntries(this.player.materials),
       hasCompanion: this.companion != null,
       recruitedNpcs: this.recruitedNpcs.map(serializeNpc),
@@ -335,202 +351,13 @@ export class Game {
     saveWorld(data);
   }
 
-  showPrologue(): void {
-    this.state = "prologue";
-    const overlay = document.getElementById("overlay")!;
-    overlay.classList.remove("hidden");
-
-    let pageIndex = 0;
-    const renderPage = () => {
-      if (pageIndex >= PROLOGUE_PAGES.length) {
-        this.startTutorial();
-        return;
-      }
-      const text = PROLOGUE_PAGES[pageIndex].replace(/\n/g, "<br>");
-      overlay.innerHTML = `
-        <div class="prologue-text">
-          <p>${text}</p>
-          <div class="prologue-tap">${pageIndex < PROLOGUE_PAGES.length - 1 ? "タップで次へ" : "タップして冒険を始める"}</div>
-        </div>
-      `;
-      overlay.onclick = () => {
-        pageIndex++;
-        renderPage();
-      };
-    };
-    renderPage();
-  }
-
-  private startTutorial(): void {
-    this.hideOverlay();
-    this.companion = null;
-    this.recruitedNpcs = [];
-    this.player = new Player(this);
-    this.tutorial = new TutorialManager(true);
-    this.messages = [];
-    const tutDungeon = new DungeonScene(DUNGEON_DEFS[0], true);
-    this.dungeonScene = tutDungeon;
-    this.currentScene = tutDungeon;
-    this.state = "dungeon";
-    tutDungeon.onEnter(this);
-    this.render();
-
-    if (this.tutorial) {
-      this.tutorial.check(this);
-      if (this.tutorial.pendingDialog) {
-        this.showTutorialDialog();
-      }
-    }
-  }
-
-  showHelp(): void {
-    this.state = "help";
-    const overlay = document.getElementById("overlay")!;
-    overlay.classList.remove("hidden");
-    overlay.innerHTML = `
-      <div id="help-content">
-        <h2>世界観</h2>
-        <p>気がつくと、見知らぬ村にいた。
-        この世界には複数の迷宮が存在し、
-        全ての迷宮を踏破した者だけが元の世界に帰れるという。</p>
-
-        <h2>操作方法</h2>
-        <table>
-          <tr><td>移動</td><td>8方向D-pad / スワイプ / 矢印キー</td></tr>
-          <tr><td>斜め</td><td>D-pad斜めボタン / 斜めスワイプ / YUBN</td></tr>
-          <tr><td>待機</td><td>D-pad中央 / タップ / .キー</td></tr>
-          <tr><td>入る</td><td>> キー / 階段ボタン（街・迷宮に入る）</td></tr>
-          <tr><td>スキル</td><td>1-3キー / スキルボタン</td></tr>
-          <tr><td>攻撃</td><td>敵の方向に移動（斜めもOK）</td></tr>
-        </table>
-
-        <h2>ワールドマップ</h2>
-        <p>ランダム生成のワールドを冒険しよう。
-        <span style="color:#ffcc00">*</span>=街、
-        <span style="color:#ff6644">D</span>=迷宮入口。
-        街やダンジョンの上で>キーで入れる。</p>
-
-        <h2>迷宮</h2>
-        <p>入るたびに構成が変わる不思議な迷宮。
-        食料(<span style="color:#44ff88">\u2666</span>)を拾って空腹を凌ごう。
-        最深部に到達すると踏破完了。</p>
-
-        <h2>装備と素材</h2>
-        <p>迷宮で素材を集め、各地の職人に装備を作ってもらおう。
-        職人はスカウトして始まりの村に住み着かせることもできる。</p>
-
-        <h2>死亡</h2>
-        <p>死亡するとスポーン地点（始まりの村）に戻される。
-        集めたアイテムは死んだ場所に残される。</p>
-
-        <div class="back-btn-wrap">
-          <button class="menu-btn secondary" id="btn-back">戻る</button>
-        </div>
-      </div>
-    `;
-    document.getElementById("btn-back")!.addEventListener("click", () => {
-      this.showTitle();
-    });
-  }
-
-  private hideOverlay(): void {
-    const overlay = document.getElementById("overlay")!;
-    overlay.classList.add("hidden");
-    overlay.onclick = null;
-  }
-
-  showEquipMenu(): void {
-    if (!this.isPlayable()) return;
-
-    const overlay = document.getElementById("overlay")!;
-    overlay.classList.remove("hidden");
-
-    const p = this.player;
-    const slotNames: Record<string, string> = { weapon: "武器", armor: "防具", accessory: "装飾" };
-
-    let html = '<div class="tutorial-dialog">';
-    html += "<p>装備変更</p>";
-
-    // Current equipment
-    html += '<div style="margin:8px 0;font-size:12px;color:#aaa">';
-    html += `武器: ${p.weapon ? `<span style="color:#ffaa44">${p.weapon.name}</span>` : "なし"} / `;
-    html += `防具: ${p.armor ? `<span style="color:#44aaff">${p.armor.name}</span>` : "なし"} / `;
-    html += `装飾: ${p.accessory ? `<span style="color:#aa88ff">${p.accessory.name}</span>` : "なし"}`;
-    html += "</div>";
-    html += `<div style="font-size:11px;color:#888;margin-bottom:8px">ATK:${p.attack} DEF:${p.defense} MP上限:${p.maxSp}</div>`;
-
-    // List owned equipment by slot
-    for (const slot of ["weapon", "armor", "accessory"] as const) {
-      const items = p.ownedEquipment.filter((e) => e.slot === slot);
-      if (items.length === 0) continue;
-
-      html += `<div style="font-size:11px;color:#666;margin-top:6px">${slotNames[slot]}</div>`;
-      for (const eq of items) {
-        const isEquipped = p[slot]?.id === eq.id;
-        const label = isEquipped ? `✓ ${eq.name}` : eq.name;
-        const btnClass = isEquipped ? "menu-btn secondary" : "menu-btn";
-        html += `<button class="${btnClass}" style="font-size:12px;padding:6px;margin:2px 0" id="eq-${eq.id}">`;
-        html += `${label} <span style="font-size:10px;color:#aaa">${eq.description}</span>`;
-        html += "</button>";
-      }
-
-      // Unequip button if something is equipped
-      if (p[slot]) {
-        html += `<button class="menu-btn secondary" style="font-size:11px;padding:4px;margin:2px 0" id="uneq-${slot}">`;
-        html += `${slotNames[slot]}を外す`;
-        html += "</button>";
-      }
-    }
-
-    if (p.ownedEquipment.length === 0) {
-      html += '<p style="color:#666;font-size:12px">装備品を持っていない</p>';
-    }
-
-    html +=
-      '<button class="menu-btn secondary" id="equip-close" style="margin-top:8px">閉じる</button>';
-    html += "</div>";
-    overlay.innerHTML = html;
-
-    // Wire up equip buttons
-    for (const eq of p.ownedEquipment) {
-      const btn = document.getElementById(`eq-${eq.id}`);
-      if (btn) {
-        btn.addEventListener("click", () => {
-          p.equip(eq);
-          this.showEquipMenu(); // Refresh
-        });
-      }
-    }
-
-    // Wire up unequip buttons
-    for (const slot of ["weapon", "armor", "accessory"] as const) {
-      const btn = document.getElementById(`uneq-${slot}`);
-      if (btn) {
-        btn.addEventListener("click", () => {
-          p.unequip(slot);
-          this.showEquipMenu(); // Refresh
-        });
-      }
-    }
-
-    document.getElementById("equip-close")!.addEventListener("click", () => {
-      this.hideOverlay();
-      this.render();
-    });
-  }
-
-  onTutorialComplete(): void {
-    this.markTutorialDone();
-    this.tutorial = null;
-    this.addMessage("チュートリアル完了！");
-    this.showTitle();
-  }
+  // --- Scene Transitions ---
 
   enterDungeon(dungeonId: string): void {
     const def = DUNGEON_DEFS.find((d) => d.id === dungeonId);
     if (!def) return;
 
-    this.hideOverlay();
+    hideOverlay();
     const scene = new DungeonScene(def);
     this.dungeonScene = scene;
     this.currentScene = scene;
@@ -547,7 +374,6 @@ export class Game {
   }
 
   exitDungeon(): void {
-    // Mark dungeon as cleared
     if (this.dungeonScene) {
       this.clearedDungeons.add(this.dungeonScene.dungeonDef.id);
     }
@@ -555,8 +381,6 @@ export class Game {
     this.currentScene = this.worldScene;
     this.state = "world";
     this.worldScene.onEnter(this);
-
-    // Auto-save when exiting dungeon
     this.saveCurrentWorld();
     this.render();
   }
@@ -578,11 +402,11 @@ export class Game {
     this.currentScene = this.worldScene;
     this.state = "world";
     this.worldScene.onEnter(this);
-
-    // Auto-save when exiting town
     this.saveCurrentWorld();
     this.render();
   }
+
+  // --- NPCs / Companions ---
 
   recruitCompanion(): void {
     if (!this.companion) {
@@ -596,7 +420,8 @@ export class Game {
     this.addMessage(`${npc.name}が始まりの村に移住した！`);
   }
 
-  // Backward compat
+  // --- Backward compat ---
+
   getEnemyAt(x: number, y: number) {
     return this.dungeonScene?.getEnemyAt(x, y);
   }
@@ -609,15 +434,78 @@ export class Game {
     this.dungeonScene?.processEnemyTurns(this);
   }
 
-  addMessage(msg: string): void {
-    this.messages.push(msg);
-    if (this.messages.length > 50) this.messages.shift();
+  nextFloor(): void {
+    this.dungeonScene?.nextFloor(this);
   }
 
-  render(): void {
-    this.display.render(this);
+  // --- UI Overlays ---
 
-    if (this.tutorial?.active && !this.tutorial.pendingDialog) {
+  showHelp(): void {
+    this.state = "help";
+    renderHelpScreen();
+    document.getElementById("btn-back")!.addEventListener("click", () => {
+      this.showTitle();
+    });
+  }
+
+  showEquipMenu(): void {
+    if (!this.isPlayable()) return;
+    renderEquipMenu(this.player);
+
+    for (const eq of this.player.ownedEquipment) {
+      document.getElementById(`eq-${eq.id}`)?.addEventListener("click", () => {
+        this.player.equip(eq);
+        this.showEquipMenu();
+      });
+    }
+
+    for (const slot of ["weapon", "armor", "accessory"] as const) {
+      document.getElementById(`uneq-${slot}`)?.addEventListener("click", () => {
+        this.player.unequip(slot);
+        this.showEquipMenu();
+      });
+    }
+
+    document.getElementById("equip-close")!.addEventListener("click", () => {
+      hideOverlay();
+      this.render();
+    });
+  }
+
+  showPrologue(): void {
+    this.state = "prologue";
+    const overlay = document.getElementById("overlay")!;
+
+    let pageIndex = 0;
+    const renderPage = () => {
+      if (pageIndex >= PROLOGUE_PAGES.length) {
+        this.startTutorial();
+        return;
+      }
+      renderProloguePage(PROLOGUE_PAGES[pageIndex], pageIndex === PROLOGUE_PAGES.length - 1);
+      overlay.onclick = () => {
+        pageIndex++;
+        renderPage();
+      };
+    };
+    renderPage();
+  }
+
+  private startTutorial(): void {
+    hideOverlay();
+    this.companion = null;
+    this.recruitedNpcs = [];
+    this.player = new Player(this);
+    this.tutorial = new TutorialManager(true);
+    this.messages = [];
+    const tutDungeon = new DungeonScene(DUNGEON_DEFS[0], true);
+    this.dungeonScene = tutDungeon;
+    this.currentScene = tutDungeon;
+    this.state = "dungeon";
+    tutDungeon.onEnter(this);
+    this.render();
+
+    if (this.tutorial) {
       this.tutorial.check(this);
       if (this.tutorial.pendingDialog) {
         this.showTutorialDialog();
@@ -627,61 +515,54 @@ export class Game {
 
   showTutorialDialog(): void {
     if (!this.tutorial?.pendingDialog) return;
-    const step = this.tutorial.pendingDialog;
-    const overlay = document.getElementById("overlay")!;
-    overlay.classList.remove("hidden");
-
-    const text = step.message.replace(/\n/g, "<br>");
-    overlay.innerHTML = `
-      <div class="tutorial-dialog">
-        <p>${text}</p>
-        <button class="menu-btn" id="btn-tutorial-ok">了解</button>
-      </div>
-    `;
+    renderTutorialDialog(this.tutorial.pendingDialog.message);
     document.getElementById("btn-tutorial-ok")!.addEventListener("click", () => {
       this.tutorial!.advance(this);
-      this.hideOverlay();
+      hideOverlay();
       this.render();
     });
   }
 
+  onTutorialComplete(): void {
+    this.markTutorialDone();
+    this.tutorial = null;
+    this.addMessage("チュートリアル完了！");
+    this.showTitle();
+  }
+
+  // --- Death / Revival ---
+
   gameOver(): void {
     this.state = "gameover";
 
-    // Drop all items at current world position
     if (this.worldScene) {
       this.worldScene.dropLoot(this);
     }
 
-    // Show goddess revival scene
     this.showGoddessScene();
   }
 
   private showGoddessScene(): void {
-    const overlay = document.getElementById("overlay")!;
-    overlay.classList.remove("hidden");
+    const cause = this.player.deathCause || "不明な力";
+    const causeMsg =
+      cause === "空腹" ? "空腹により力尽きたようですね..." : `${cause}にやられたようですね...`;
 
     const pages = [
       "目の前が暗くなっていく...\n\n力尽きた...",
       "...不思議な光に包まれる...\n\n暖かい...この光は...",
-      "「...聞こえますか、旅の者よ」\n\n「私は女神ルミナ。\n　この世界の理を司る者」",
+      `「...聞こえますか、旅の者よ」\n\n「私は女神ルミナ。\n　この世界の理を司る者」\n\n「${causeMsg}」`,
       "「あなたにはまだ、\n　果たすべき使命がある」\n\n「持ち物はあの場所に\n　残っています。\n　取りに戻りなさい」",
       "「さあ、目を覚ましなさい...\n　始まりの村が\n　あなたを待っています」",
     ];
 
+    const overlay = document.getElementById("overlay")!;
     let pageIndex = 0;
     const renderPage = () => {
       if (pageIndex >= pages.length) {
         this.completeRevival();
         return;
       }
-      const text = pages[pageIndex].replace(/\n/g, "<br>");
-      overlay.innerHTML = `
-        <div class="prologue-text" style="color:#aaddff">
-          <p>${text}</p>
-          <div class="prologue-tap">${pageIndex < pages.length - 1 ? "タップで次へ" : "タップして目を覚ます"}</div>
-        </div>
-      `;
+      renderGoddessScene(pages[pageIndex], pageIndex === pages.length - 1);
       overlay.onclick = () => {
         pageIndex++;
         renderPage();
@@ -691,14 +572,12 @@ export class Game {
   }
 
   private completeRevival(): void {
-    this.hideOverlay();
+    hideOverlay();
 
-    // Restore HP/hunger
     this.player.hp = this.player.maxHp;
     this.player.sp = this.player.maxSp;
     this.player.hunger = this.player.maxHunger;
 
-    // Return to world map at spawn point
     this.dungeonScene = null;
     this.townScene = null;
     this.currentScene = this.worldScene;
@@ -716,9 +595,5 @@ export class Game {
 
     this.saveCurrentWorld();
     this.render();
-  }
-
-  nextFloor(): void {
-    this.dungeonScene?.nextFloor(this);
   }
 }

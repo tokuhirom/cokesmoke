@@ -23,9 +23,9 @@ interface WorldEnemyDef {
 }
 
 const WORLD_ENEMY_DEFS: WorldEnemyDef[] = [
-  { char: "b", name: "野盗", hp: 25, attack: 8, defense: 3, color: "#cc6644" },
-  { char: "B", name: "野盗の頭", hp: 50, attack: 14, defense: 5, color: "#ee5533" },
-  { char: "w", name: "野狼", hp: 18, attack: 10, defense: 2, color: "#aaaacc" },
+  { char: "b", name: "野盗", hp: 12, attack: 4, defense: 1, color: "#cc6644" },
+  { char: "B", name: "野盗の頭", hp: 30, attack: 8, defense: 3, color: "#ee5533" },
+  { char: "w", name: "野狼", hp: 8, attack: 3, defense: 0, color: "#aaaacc" },
 ];
 
 interface WorldEnemy {
@@ -295,12 +295,6 @@ export class WorldScene implements Scene {
     this.forage(game, nx, ny);
     this.consumeHunger(game);
 
-    // Check if enemy walked into player
-    const attacker = this.getWorldEnemyAt(nx, ny);
-    if (attacker) {
-      this.enemyAttacksPlayer(game, attacker);
-    }
-
     // Check dropped loot
     this.pickupLoot(game, nx, ny);
 
@@ -344,12 +338,6 @@ export class WorldScene implements Scene {
     }
     this.worldEnemyTurn();
     this.consumeHunger(game);
-
-    // Check if enemy walked into player
-    const attacker = this.getWorldEnemyAt(this.playerWorldX, this.playerWorldY);
-    if (attacker) {
-      this.enemyAttacksPlayer(game, attacker);
-    }
   }
 
   onDescend(game: Game): boolean {
@@ -529,6 +517,7 @@ export class WorldScene implements Scene {
 
   private enemyAttacksPlayer(game: Game, enemy: WorldEnemy): void {
     const p = game.player;
+    p.deathCause = enemy.def.name;
     const enemyDmg = p.takeDamage(enemy.def.attack);
     game.addMessage(`${enemy.def.name}の攻撃！ ${enemyDmg}ダメージ`);
     if (!p.isAlive()) {
@@ -557,12 +546,12 @@ export class WorldScene implements Scene {
         continue;
       }
 
-      // Chase if close to player, otherwise wander
+      // Chase if visible on screen, otherwise wander
       const dist = Math.abs(enemy.x - this.playerWorldX) + Math.abs(enemy.y - this.playerWorldY);
       let nx: number;
       let ny: number;
 
-      if (dist <= 8) {
+      if (dist <= 5) {
         // Chase player
         const dx = Math.sign(this.playerWorldX - enemy.x);
         const dy = Math.sign(this.playerWorldY - enemy.y);
@@ -581,8 +570,10 @@ export class WorldScene implements Scene {
         ny = enemy.y + dir[1];
       }
 
-      // Validate move
+      // Validate move (stop adjacent to player, don't walk onto them)
+      const isPlayerPos = nx === this.playerWorldX && ny === this.playerWorldY;
       if (
+        !isPlayerPos &&
         nx >= 0 &&
         nx < this.width &&
         ny >= 0 &&

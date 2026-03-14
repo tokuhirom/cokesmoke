@@ -4,6 +4,7 @@ import type { Game } from "../Game";
 import { Dungeon } from "../Dungeon";
 import { Enemy, spawnEnemies } from "../Enemy";
 import { ItemInstance, spawnItems } from "../Item";
+import { generateArtifact } from "../Equipment";
 import {
   MAP_WIDTH,
   MAP_HEIGHT,
@@ -163,6 +164,11 @@ export class DungeonScene implements Scene {
     game.addMessage(`${enemy.name}に${dmg}ダメージ！`);
     if (!enemy.isAlive()) {
       game.addMessage(`${enemy.name}を倒した！`);
+      if (enemy.isBoss) {
+        const artifact = generateArtifact(this.currentFloor);
+        p.ownedEquipment.push(artifact);
+        game.addMessage(`★ ${artifact.name}を手に入れた！（${artifact.description}）`);
+      }
     }
   }
 
@@ -205,6 +211,7 @@ export class DungeonScene implements Scene {
     if (p.hunger === 0) {
       const starveDmg = 3;
       p.hp -= starveDmg;
+      p.deathCause = "空腹";
       game.addMessage(`空腹で${starveDmg}ダメージ！`);
       if (p.hp <= 0) {
         p.hp = 0;
@@ -214,6 +221,11 @@ export class DungeonScene implements Scene {
     }
 
     p.sp = Math.min(p.maxSp, p.sp + SP_REGEN_PER_TURN);
+
+    // Gift: HP regen
+    if (p.hpRegen && p.hp < p.maxHp && p.hunger > 0) {
+      p.hp = Math.min(p.maxHp, p.hp + 1);
+    }
 
     const tile = this.dungeon.getTile(p.x, p.y);
     if (tile && tile.char === "\u2261") {
@@ -396,12 +408,29 @@ export class DungeonScene implements Scene {
 
     const weaponStr = p.weapon ? ` <span style="color:#ffaa44">${p.weapon.name}</span>` : "";
 
+    // Resistance summary
+    const resists: string[] = [];
+    for (const elem of ["fire", "ice", "poison", "lightning"] as const) {
+      const val = p.getResistance(elem);
+      if (val > 0) {
+        const names: Record<string, string> = {
+          fire: "炎",
+          ice: "氷",
+          poison: "毒",
+          lightning: "雷",
+        };
+        resists.push(`${names[elem]}${val}%`);
+      }
+    }
+    const resistStr =
+      resists.length > 0 ? ` <span style="color:#88aacc">[${resists.join(" ")}]</span>` : "";
+
     return (
       `<span class="hp-color">HP:${hpBar} ${p.hp}/${p.maxHp}</span>  ` +
       `<span class="fuel-color">満腹:${p.hunger}</span>  ` +
       `<span class="floor-color">${floorLabel}</span>${armorStr}${weaponStr}<br>` +
       `<span class="sp-color">MP:[${spBar}] ${p.sp}/${p.maxSp}</span>` +
-      `  ATK:${p.attack} DEF:${p.defense}`
+      `  ATK:${p.attack} DEF:${p.defense}${resistStr}`
     );
   }
 }

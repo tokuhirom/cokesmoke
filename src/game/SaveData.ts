@@ -1,5 +1,6 @@
 import type { NpcDef } from "./scenes/TownScene";
 import type { DroppedLoot } from "./scenes/WorldScene";
+import type { EquipmentDef } from "./Equipment";
 
 export interface SavedWorld {
   id: string;
@@ -35,6 +36,12 @@ export interface SavedWorld {
   clearedDungeons: string[];
   // Dropped loot from deaths
   droppedLoots?: DroppedLoot[];
+  // Random artifacts (full definitions)
+  artifacts?: EquipmentDef[];
+  // Goddess gift
+  giftId?: string | null;
+  // Max hunger (for gift that increases it)
+  playerMaxHunger?: number;
 }
 
 export interface SerializedNpc {

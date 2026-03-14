@@ -1,13 +1,79 @@
 import { Entity } from "./Entity";
 import type { Game } from "./Game";
 import type { SkillDef } from "./Skill";
-import type { EquipmentDef } from "./Equipment";
+import type { EquipmentDef, Element } from "./Equipment";
 import {
   PLAYER_INITIAL_HP,
   PLAYER_INITIAL_SP,
   PLAYER_INITIAL_HUNGER,
   COLOR_PLAYER,
 } from "../constants";
+
+export interface GiftDef {
+  id: string;
+  name: string;
+  description: string;
+  apply: (player: Player) => void;
+}
+
+export const GIFT_DEFS: GiftDef[] = [
+  {
+    id: "sword_saint",
+    name: "剣聖の才",
+    description: "攻撃力+5。剣の扱いに天賦の才を持つ。",
+    apply: (p) => {
+      p.baseAttack += 5;
+      p.recalcStats();
+    },
+  },
+  {
+    id: "guardian",
+    name: "守護の祝福",
+    description: "防御+3、最大HP+20。女神の守りが身を護る。",
+    apply: (p) => {
+      p.baseDefense += 3;
+      p.maxHp += 20;
+      p.hp += 20;
+      p.recalcStats();
+    },
+  },
+  {
+    id: "mana_spring",
+    name: "魔力の泉",
+    description: "最大MP+40。溢れる魔力が宿る。",
+    apply: (p) => {
+      p.baseSp += 40;
+      p.sp += 40;
+      p.recalcStats();
+    },
+  },
+  {
+    id: "fire_protection",
+    name: "炎の加護",
+    description: "炎耐性50%。炎から身を守る。",
+    apply: (p) => {
+      p.giftResistances.fire = 50;
+    },
+  },
+  {
+    id: "survival_instinct",
+    name: "生存本能",
+    description: "最大満腹+50、HP自然回復。生き延びる力が備わる。",
+    apply: (p) => {
+      p.maxHunger += 50;
+      p.hunger += 50;
+      p.hpRegen = true;
+    },
+  },
+  {
+    id: "poison_immunity",
+    name: "毒無効の体質",
+    description: "毒耐性100%。毒が一切効かない。",
+    apply: (p) => {
+      p.giftResistances.poison = 100;
+    },
+  },
+];
 
 export class Player extends Entity {
   sp: number;
@@ -35,6 +101,14 @@ export class Player extends Entity {
 
   // Inventory: materials
   materials: Map<string, number> = new Map();
+
+  // Goddess gift
+  giftId: string | null = null;
+  giftResistances: Partial<Record<Element, number>> = {};
+  hpRegen = false;
+
+  // Death cause tracking
+  deathCause = "";
 
   constructor(game: Game) {
     super(game, "@", COLOR_PLAYER, "転生者", PLAYER_INITIAL_HP, 10, 2);
@@ -124,12 +198,35 @@ export class Player extends Entity {
     this.y = y;
   }
 
+  getResistance(element: Element): number {
+    let total = this.giftResistances[element] ?? 0;
+    for (const eq of [this.weapon, this.armor, this.accessory]) {
+      if (eq?.resistances?.[element]) {
+        total += eq.resistances[element];
+      }
+    }
+    return Math.min(100, total);
+  }
+
+  takeElementalDamage(amount: number, element: Element, sourceName: string): number {
+    if (this.armorTurns > 0) {
+      this.game.addMessage("バリアが攻撃を弾いた！");
+      return 0;
+    }
+    const resist = this.getResistance(element);
+    const reduced = Math.max(1, Math.floor(amount * (1 - resist / 100)) - this.defense);
+    this.hp = Math.max(0, this.hp - reduced);
+    this.deathCause = sourceName;
+    return reduced;
+  }
+
   override takeDamage(amount: number): number {
     if (this.armorTurns > 0) {
       this.game.addMessage("バリアが攻撃を弾いた！");
       return 0;
     }
-    return super.takeDamage(amount);
+    const dmg = super.takeDamage(amount);
+    return dmg;
   }
 
   learnSkill(skill: SkillDef): boolean {
