@@ -765,12 +765,12 @@ export class DungeonScene implements Scene {
     const hungerStyle = hungerColor ? ` style="color:${hungerColor};font-weight:bold"` : "";
 
     return (
-      `<span class="hp-color">HP:${hpBar} ${p.hp}/${p.maxHp}</span>  ` +
-      `<span class="fuel-color"${hungerStyle}>満腹:${p.hunger}</span>  ` +
-      `<span style="color:#ffdd44">${p.gold}G</span>  ` +
-      `<span class="floor-color">${floorLabel}</span>${armorStr}${weaponStr}<br>` +
-      `<span class="sp-color">MP:[${spBar}] ${p.sp}/${p.maxSp}</span>` +
-      `  ATK:${p.attack} DEF:${p.defense}${resistStr}`
+      `<span class="hp-color">HP:${p.hp}/${p.maxHp}</span> ` +
+      `<span class="sp-color">MP:${p.sp}/${p.maxSp}</span> ` +
+      `<span class="fuel-color"${hungerStyle}>満腹:${p.hunger}</span> ` +
+      `<span style="color:#ffdd44">${p.gold}G</span>${armorStr}${weaponStr}<br>` +
+      `<span class="floor-color">${floorLabel}</span> ` +
+      `ATK:${p.attack} DEF:${p.defense}${resistStr}`
     );
   }
 }
