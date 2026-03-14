@@ -1,5 +1,5 @@
 import * as ROT from "rot-js";
-import { MAP_WIDTH, MAP_HEIGHT } from "../constants";
+import { MAP_WIDTH, MAP_HEIGHT, DUNGEON_WIDTH, DUNGEON_HEIGHT } from "../constants";
 import type { Game } from "./Game";
 
 export interface Tile {
@@ -15,6 +15,8 @@ export class Dungeon {
   startY = 0;
   stairsX = 0;
   stairsY = 0;
+  width = DUNGEON_WIDTH;
+  height = DUNGEON_HEIGHT;
   game: Game;
   floor: number;
 
@@ -42,16 +44,16 @@ export class Dungeon {
   }
 
   generate(): void {
-    const digger = new ROT.Map.Digger(MAP_WIDTH, MAP_HEIGHT, {
-      roomWidth: [5, 10],
-      roomHeight: [4, 7],
-      corridorLength: [1, 4],
-      dugPercentage: 0.4,
+    const digger = new ROT.Map.Digger(DUNGEON_WIDTH, DUNGEON_HEIGHT, {
+      roomWidth: [5, 12],
+      roomHeight: [4, 8],
+      corridorLength: [2, 6],
+      dugPercentage: 0.35,
     });
 
     // Fill everything as wall first
-    for (let x = 0; x < MAP_WIDTH; x++) {
-      for (let y = 0; y < MAP_HEIGHT; y++) {
+    for (let x = 0; x < DUNGEON_WIDTH; x++) {
+      for (let y = 0; y < DUNGEON_HEIGHT; y++) {
         this.tiles.set(Dungeon.key(x, y), {
           char: "\u2588",
           walkable: false,
@@ -119,10 +121,11 @@ export class Dungeon {
   }
 
   generateTutorial(): void {
-    // Small hand-crafted map for tutorial
-    // Layout: start room -> corridor -> item room -> corridor -> enemy room -> corridor -> stairs room
+    // Small hand-crafted map for tutorial (fits on screen)
     const W = MAP_WIDTH;
     const H = MAP_HEIGHT;
+    this.width = W;
+    this.height = H;
 
     // Fill with walls
     for (let x = 0; x < W; x++) {

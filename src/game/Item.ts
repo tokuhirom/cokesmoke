@@ -9,6 +9,7 @@ export interface ItemDef {
   description: string;
   consumable?: boolean; // if true, goes to inventory instead of instant use
   effect: (game: Game) => void;
+  arrowPower?: number; // damage multiplier for arrows (射撃 skill)
 }
 
 export const ITEM_DEFS: ItemDef[] = [
@@ -82,6 +83,26 @@ export const ITEM_DEFS: ItemDef[] = [
         game.showSkillReplaceMenu(skill);
       }
     },
+  },
+  {
+    char: "|",
+    name: "木の矢",
+    description: "射撃で使う矢（攻撃力の80%）",
+    consumable: true,
+    effect: (game) => {
+      game.addMessage("木の矢は射撃スキルで使える");
+    },
+    arrowPower: 0.8,
+  },
+  {
+    char: "|",
+    name: "鉄の矢",
+    description: "射撃で使う矢（攻撃力の120%）",
+    consumable: true,
+    effect: (game) => {
+      game.addMessage("鉄の矢は射撃スキルで使える");
+    },
+    arrowPower: 1.2,
   },
 ];
 

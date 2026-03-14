@@ -1,6 +1,10 @@
 export const MAP_WIDTH = 35;
 export const MAP_HEIGHT = 20;
 
+// Dungeon map is larger than viewport, camera follows player
+export const DUNGEON_WIDTH = 70;
+export const DUNGEON_HEIGHT = 40;
+
 export const FOV_RADIUS = 5;
 
 export const PLAYER_INITIAL_HP = 100;

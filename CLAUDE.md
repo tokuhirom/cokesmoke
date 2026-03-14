@@ -78,6 +78,7 @@ Tests are in `src/game/__tests__/` using vitest. `testHelper.ts` provides `creat
 
 - **動作確認はGitHub Pagesで行う**。コミット後は必ず即座に`git push`すること。プッシュを待たない。
 - コミット前に`npx oxfmt --write src/`でフォーマット。
+- 変更を加えたら `CHANGES.md` に変更履歴を追記すること。「未リリース」セクションに新機能・変更・修正を記載する。
 
 ## Language
 

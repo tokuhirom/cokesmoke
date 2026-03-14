@@ -4,11 +4,14 @@ import type { Game } from "../Game";
 import { MAP_WIDTH, MAP_HEIGHT, COLOR_PLAYER } from "../../constants";
 import {
   CRAFT_RECIPES,
+  CONSUMABLE_CRAFT_RECIPES,
   EQUIPMENT_DEFS,
   MATERIAL_DEFS,
   type CraftRecipe,
+  type ConsumableCraftRecipe,
   type EquipmentDef,
 } from "../Equipment";
+import { ITEM_DEFS } from "../Item";
 
 export interface NpcDef {
   char: string;
@@ -412,7 +415,8 @@ export class TownScene implements Scene {
 
   private openCraftMenu(game: Game, npc: NpcDef): void {
     const recipes = CRAFT_RECIPES.filter((r) => r.crafterId === npc.crafterId);
-    if (recipes.length === 0) return;
+    const consumableRecipes = CONSUMABLE_CRAFT_RECIPES.filter((r) => r.crafterId === npc.crafterId);
+    if (recipes.length === 0 && consumableRecipes.length === 0) return;
 
     this.showingDialog = true;
     const overlay = document.getElementById("overlay")!;
@@ -436,21 +440,27 @@ export class TownScene implements Scene {
     }
     html += "</p>";
 
+    // Equipment recipes
     for (let i = 0; i < recipes.length; i++) {
       const recipe = recipes[i];
       const eqDef = EQUIPMENT_DEFS[recipe.resultEquipment];
-      const canCraft = this.canCraft(game, recipe);
-      const matStr = recipe.materials
-        .map((m) => {
-          const mat = MATERIAL_DEFS.find((md) => md.id === m.materialId);
-          const have = p.getMaterialCount(m.materialId);
-          const color = have >= m.count ? "#44ff88" : "#ff4444";
-          return `<span style="color:${color}">${mat?.name ?? m.materialId}${have}/${m.count}</span>`;
-        })
-        .join(" ");
+      const canCraft = this.canCraftRecipe(game, recipe.materials);
+      const matStr = this.formatMaterials(game, recipe.materials);
 
       html += `<button class="menu-btn${canCraft ? "" : " secondary"}" id="craft-${i}" ${canCraft ? "" : "disabled"}>`;
       html += `${eqDef?.name ?? recipe.name} (${eqDef?.description ?? ""})`;
+      html += `<br><span style="font-size:10px">${matStr}</span>`;
+      html += "</button>";
+    }
+
+    // Consumable recipes
+    for (let i = 0; i < consumableRecipes.length; i++) {
+      const recipe = consumableRecipes[i];
+      const canCraft = this.canCraftRecipe(game, recipe.materials);
+      const matStr = this.formatMaterials(game, recipe.materials);
+
+      html += `<button class="menu-btn${canCraft ? "" : " secondary"}" id="ccraft-${i}" ${canCraft ? "" : "disabled"}>`;
+      html += `${recipe.name}`;
       html += `<br><span style="font-size:10px">${matStr}</span>`;
       html += "</button>";
     }
@@ -466,6 +476,16 @@ export class TownScene implements Scene {
         this.doCraft(game, recipe, npc);
       });
     }
+
+    for (let i = 0; i < consumableRecipes.length; i++) {
+      const btn = document.getElementById(`ccraft-${i}`);
+      if (!btn) continue;
+      const recipe = consumableRecipes[i];
+      btn.addEventListener("click", () => {
+        this.doCraftConsumable(game, recipe, npc);
+      });
+    }
+
     document.getElementById("craft-close")!.addEventListener("click", () => {
       this.showingDialog = false;
       overlay.classList.add("hidden");
@@ -473,25 +493,54 @@ export class TownScene implements Scene {
     });
   }
 
-  private canCraft(game: Game, recipe: CraftRecipe): boolean {
-    return recipe.materials.every((m) => game.player.getMaterialCount(m.materialId) >= m.count);
+  private formatMaterials(game: Game, materials: { materialId: string; count: number }[]): string {
+    return materials
+      .map((m) => {
+        const mat = MATERIAL_DEFS.find((md) => md.id === m.materialId);
+        const have = game.player.getMaterialCount(m.materialId);
+        const color = have >= m.count ? "#44ff88" : "#ff4444";
+        return `<span style="color:${color}">${mat?.name ?? m.materialId}${have}/${m.count}</span>`;
+      })
+      .join(" ");
+  }
+
+  private canCraftRecipe(game: Game, materials: { materialId: string; count: number }[]): boolean {
+    return materials.every((m) => game.player.getMaterialCount(m.materialId) >= m.count);
   }
 
   private doCraft(game: Game, recipe: CraftRecipe, npc: NpcDef): void {
-    if (!this.canCraft(game, recipe)) return;
+    if (!this.canCraftRecipe(game, recipe.materials)) return;
 
-    // Consume materials
     for (const m of recipe.materials) {
       game.player.removeMaterial(m.materialId, m.count);
     }
 
-    // Equip result
     const eqDef = EQUIPMENT_DEFS[recipe.resultEquipment];
     if (eqDef) {
       game.player.equip(eqDef);
     }
 
-    // Refresh craft menu
+    this.openCraftMenu(game, npc);
+  }
+
+  private doCraftConsumable(game: Game, recipe: ConsumableCraftRecipe, npc: NpcDef): void {
+    if (!this.canCraftRecipe(game, recipe.materials)) return;
+
+    for (const m of recipe.materials) {
+      game.player.removeMaterial(m.materialId, m.count);
+    }
+
+    const itemDef = ITEM_DEFS.find((d) => d.name === recipe.resultItem);
+    if (itemDef) {
+      const existing = game.player.consumables.get(recipe.resultItem);
+      if (existing) {
+        existing.count += recipe.count;
+      } else {
+        game.player.consumables.set(recipe.resultItem, { def: itemDef, count: recipe.count });
+      }
+      game.addMessage(`${recipe.resultItem}x${recipe.count}を作成した！`);
+    }
+
     this.openCraftMenu(game, npc);
   }
 

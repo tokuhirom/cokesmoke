@@ -44,6 +44,8 @@ export interface SavedWorld {
   spRegenBonus?: number;
   hungerCostMult?: number;
   trapEvadeBonus?: number;
+  allowedWeapons?: string[] | null;
+  learnableSkills?: string[] | null;
   // Goddess gift
   giftId?: string | null;
   // Max hunger (for gift that increases it)
@@ -52,6 +54,11 @@ export interface SavedWorld {
   playerGold?: number;
   // Consumable inventory (name → count)
   consumables?: Record<string, number>;
+  // Dungeon state (if player is currently in a dungeon)
+  inDungeonId?: string | null;
+  dungeonFloor?: number;
+  dungeonPlayerX?: number;
+  dungeonPlayerY?: number;
 }
 
 export interface SerializedNpc {

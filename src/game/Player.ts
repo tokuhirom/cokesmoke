@@ -1,7 +1,7 @@
 import { Entity } from "./Entity";
 import type { Game } from "./Game";
 import type { SkillDef } from "./Skill";
-import type { EquipmentDef, Element } from "./Equipment";
+import type { EquipmentDef, Element, WeaponType } from "./Equipment";
 import type { ItemDef } from "./Item";
 import {
   PLAYER_INITIAL_HP,
@@ -24,13 +24,15 @@ export interface JobDef {
   hpRegen: boolean; // passive HP regen
   trapEvadeBonus: number; // extra trap evasion chance (0-1)
   initialSkills: string[]; // skill names to start with
+  allowedWeapons?: WeaponType[]; // if set, can only equip these weapon types
+  learnableSkills?: string[]; // if set, can only learn these skills
 }
 
 export const JOB_DEFS: JobDef[] = [
   {
     id: "warrior",
     name: "戦士",
-    description: "攻撃+5 防御+3 HP+20 スキル枠2",
+    description: "攻撃+5 防御+3 HP+20 スキル枠2 剣・斧装備可",
     attackBonus: 5,
     defenseBonus: 3,
     hpBonus: 20,
@@ -41,6 +43,8 @@ export const JOB_DEFS: JobDef[] = [
     hpRegen: false,
     trapEvadeBonus: 0,
     initialSkills: [],
+    allowedWeapons: ["sword", "axe"],
+    learnableSkills: ["バリア"],
   },
   {
     id: "mage",
@@ -56,6 +60,7 @@ export const JOB_DEFS: JobDef[] = [
     hpRegen: false,
     trapEvadeBonus: 0,
     initialSkills: ["ファイアボルト"],
+    learnableSkills: ["ファイアボルト", "メテオ", "バリア", "テレポート"],
   },
   {
     id: "priest",
@@ -71,6 +76,7 @@ export const JOB_DEFS: JobDef[] = [
     hpRegen: true,
     trapEvadeBonus: 0,
     initialSkills: ["ヒール"],
+    learnableSkills: ["ヒール", "ヒールII", "バリア", "テレポート"],
   },
   {
     id: "thief",
@@ -86,11 +92,12 @@ export const JOB_DEFS: JobDef[] = [
     hpRegen: false,
     trapEvadeBonus: 0.3,
     initialSkills: ["テレポート"],
+    learnableSkills: ["テレポート", "射撃"],
   },
   {
     id: "ranger",
     name: "狩人",
-    description: "攻撃+3 射撃習得済",
+    description: "攻撃+3 射撃習得済 短剣のみ装備可 矢を消費して射撃",
     attackBonus: 3,
     defenseBonus: 0,
     hpBonus: 0,
@@ -101,6 +108,8 @@ export const JOB_DEFS: JobDef[] = [
     hpRegen: false,
     trapEvadeBonus: 0,
     initialSkills: ["射撃"],
+    allowedWeapons: ["dagger"],
+    learnableSkills: ["射撃"],
   },
 ];
 
@@ -207,6 +216,8 @@ export class Player extends Entity {
   hungerCostMult = 1.0;
   hungerAccum = 0;
   trapEvadeBonus = 0;
+  allowedWeapons: WeaponType[] | null = null; // null = all allowed
+  learnableSkills: string[] | null = null; // null = all allowed
 
   // Goddess gift
   giftId: string | null = null;
@@ -243,6 +254,8 @@ export class Player extends Entity {
     this.hungerCostMult = job.hungerCostMult;
     if (job.hpRegen) this.hpRegen = true;
     this.trapEvadeBonus = job.trapEvadeBonus;
+    if (job.allowedWeapons) this.allowedWeapons = job.allowedWeapons;
+    if (job.learnableSkills) this.learnableSkills = job.learnableSkills;
     this.recalcStats();
   }
 
@@ -270,7 +283,18 @@ export class Player extends Entity {
     if (this.sp > this.maxSp) this.sp = this.maxSp;
   }
 
+  canEquip(equipment: EquipmentDef): boolean {
+    if (equipment.slot === "weapon" && this.allowedWeapons && equipment.weaponType) {
+      return this.allowedWeapons.includes(equipment.weaponType);
+    }
+    return true;
+  }
+
   equip(equipment: EquipmentDef): void {
+    if (!this.canEquip(equipment)) {
+      this.game.addMessage(`${equipment.name}はこの職業では装備できない！`);
+      return;
+    }
     switch (equipment.slot) {
       case "weapon":
         this.weapon = equipment;
@@ -375,7 +399,11 @@ export class Player extends Entity {
     return dmg;
   }
 
-  learnSkill(skill: SkillDef): "learned" | "duplicate" | "full" {
+  learnSkill(skill: SkillDef): "learned" | "duplicate" | "full" | "cannot" {
+    if (this.learnableSkills && !this.learnableSkills.includes(skill.name)) {
+      this.game.addMessage(`この職業では「${skill.name}」を習得できない！`);
+      return "cannot";
+    }
     if (this.skills.some((s) => s.name === skill.name)) {
       this.game.addMessage("すでに習得済みのスキルだ");
       return "duplicate";

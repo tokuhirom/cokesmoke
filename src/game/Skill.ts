@@ -46,6 +46,7 @@ export const SKILL_DEFS: SkillDef[] = [
     name: "ファイアボルト",
     description: "前方2マスに炎",
     spCost: 20,
+
     execute: (game) => {
       const p = game.player;
       const lastDx = game.player.lastDx;
@@ -73,6 +74,7 @@ export const SKILL_DEFS: SkillDef[] = [
     name: "メテオ",
     description: "MP全消費→大ダメージ",
     spCost: "all",
+
     execute: (game) => {
       const p = game.player;
       const dmg = p.sp * 2;
@@ -97,6 +99,7 @@ export const SKILL_DEFS: SkillDef[] = [
     name: "バリア",
     description: "1ターン無敵",
     spCost: 15,
+
     execute: (game) => {
       game.player.armorTurns = 2;
       game.addMessage("バリア展開！一時的に無敵状態");
@@ -104,12 +107,27 @@ export const SKILL_DEFS: SkillDef[] = [
   },
   {
     name: "射撃",
-    description: "視界内の最も近い敵に矢",
-    spCost: 10,
+    description: "矢を消費して視界内の敵を攻撃",
+    spCost: 0,
     execute: (game) => {
       const p = game.player;
       const scene = game.dungeonScene;
       if (!scene) return;
+
+      // Find best arrow in inventory (prefer stronger arrows)
+      let arrowEntry: { name: string; def: { arrowPower?: number }; count: number } | null = null;
+      for (const [name, entry] of p.consumables) {
+        if (entry.def.arrowPower) {
+          if (!arrowEntry || entry.def.arrowPower > (arrowEntry.def.arrowPower ?? 0)) {
+            arrowEntry = { name, def: entry.def, count: entry.count };
+          }
+        }
+      }
+
+      if (!arrowEntry) {
+        game.addMessage("矢がない！");
+        return;
+      }
 
       // Find nearest visible enemy with clear line of sight
       let bestEnemy: ReturnType<typeof game.getEnemyAt> = undefined;
@@ -121,7 +139,6 @@ export const SKILL_DEFS: SkillDef[] = [
 
         const dist = Math.abs(enemy.x - p.x) + Math.abs(enemy.y - p.y);
         if (dist < bestDist) {
-          // Check line of sight (no walls blocking)
           if (hasLineOfSight(scene, p.x, p.y, enemy.x, enemy.y)) {
             bestDist = dist;
             bestEnemy = enemy;
@@ -130,8 +147,14 @@ export const SKILL_DEFS: SkillDef[] = [
       }
 
       if (bestEnemy) {
-        const dmg = bestEnemy.takeDamage(p.attack);
-        game.addMessage(`射撃！${bestEnemy.name}に${dmg}ダメージ！`);
+        // Consume arrow
+        const entry = p.consumables.get(arrowEntry.name)!;
+        entry.count--;
+        if (entry.count <= 0) p.consumables.delete(arrowEntry.name);
+
+        const power = arrowEntry.def.arrowPower ?? 1;
+        const dmg = bestEnemy.takeDamage(Math.floor(p.attack * power));
+        game.addMessage(`射撃（${arrowEntry.name}）！${bestEnemy.name}に${dmg}ダメージ！`);
         if (!bestEnemy.isAlive()) game.addMessage(`${bestEnemy.name}を倒した！`);
       } else {
         game.addMessage("射撃！...しかし射程内に敵がいない");
@@ -142,6 +165,7 @@ export const SKILL_DEFS: SkillDef[] = [
     name: "ヒール",
     description: "HP25回復",
     spCost: 15,
+
     execute: (game) => {
       const p = game.player;
       const actual = Math.min(25, p.maxHp - p.hp);
@@ -157,6 +181,7 @@ export const SKILL_DEFS: SkillDef[] = [
     name: "ヒールII",
     description: "HP60回復",
     spCost: 35,
+
     execute: (game) => {
       const p = game.player;
       const actual = Math.min(60, p.maxHp - p.hp);
@@ -172,6 +197,7 @@ export const SKILL_DEFS: SkillDef[] = [
     name: "テレポート",
     description: "ランダムな場所に瞬間移動",
     spCost: 10,
+
     execute: (game) => {
       const scene = game.dungeonScene;
       if (!scene) return;
@@ -210,7 +236,7 @@ export function useSkill(game: Game, skillIndex: number): boolean {
   const skill = p.skills[skillIndex];
   const cost = skill.spCost === "all" ? p.sp : skill.spCost;
 
-  if (cost <= 0 && skill.spCost !== "all") {
+  if (cost < 0 && skill.spCost !== "all") {
     game.addMessage("MPが足りない！");
     return false;
   }

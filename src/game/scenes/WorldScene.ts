@@ -2,7 +2,8 @@ import * as ROT from "rot-js";
 import type { Scene } from "./Scene";
 import type { Game } from "../Game";
 import { MAP_WIDTH, MAP_HEIGHT, COLOR_PLAYER, HUNGER_COST_PER_TURN } from "../../constants";
-import { EQUIPMENT_DEFS } from "../Equipment";
+import { EQUIPMENT_DEFS, type EquipmentDef } from "../Equipment";
+import { ITEM_DEFS } from "../Item";
 import { DUNGEON_DEFS } from "./DungeonScene";
 
 export interface PointOfInterest {
@@ -40,11 +41,15 @@ interface WorldEnemy {
 export interface DroppedLoot {
   x: number;
   y: number;
-  weaponId: string | null;
-  armorId: string | null;
-  accessoryId: string | null;
+  // For dungeon drops
+  dungeonId?: string;
+  floor?: number;
+  // Items (only unequipped equipment is dropped)
   equipmentIds: string[];
+  artifacts?: EquipmentDef[];
   materials: Record<string, number>;
+  consumables?: Record<string, number>;
+  gold?: number;
 }
 
 interface WorldTile {
@@ -341,10 +346,14 @@ export class WorldScene implements Scene {
 
   private consumeHunger(game: Game): void {
     const p = game.player;
-    p.hunger -= HUNGER_COST_PER_TURN;
+    p.hungerAccum = (p.hungerAccum ?? 0) + HUNGER_COST_PER_TURN * p.hungerCostMult;
+    const hungerCost = Math.floor(p.hungerAccum);
+    p.hungerAccum -= hungerCost;
+    p.hunger -= hungerCost;
     if (p.hunger < 0) p.hunger = 0;
     if (p.hunger === 0) {
       p.hp -= 3;
+      p.deathCause = "空腹";
       game.addMessage("空腹で3ダメージ！");
       if (p.hp <= 0) {
         p.hp = 0;
@@ -382,64 +391,79 @@ export class WorldScene implements Scene {
     return false;
   }
 
-  dropLoot(game: Game): void {
+  dropLoot(game: Game, dungeonId?: string, dungeonFloor?: number): void {
     const p = game.player;
     const materials: Record<string, number> = {};
     for (const [id, count] of p.materials) {
       materials[id] = count;
     }
+    const consumables: Record<string, number> = {};
+    for (const [name, entry] of p.consumables) {
+      consumables[name] = entry.count;
+    }
 
-    const hasStuff = p.ownedEquipment.length > 0 || Object.keys(materials).length > 0;
+    // Unequipped equipment = owned minus currently equipped
+    const equippedIds = new Set<string>();
+    if (p.weapon) equippedIds.add(p.weapon.id);
+    if (p.armor) equippedIds.add(p.armor.id);
+    if (p.accessory) equippedIds.add(p.accessory.id);
+    const unequipped = p.ownedEquipment.filter((e) => !equippedIds.has(e.id));
+    const unequippedIds = unequipped.map((e) => e.id);
+    const droppedArtifacts = unequipped.filter((e) => e.isArtifact);
+
+    const hasStuff =
+      unequippedIds.length > 0 ||
+      Object.keys(materials).length > 0 ||
+      Object.keys(consumables).length > 0 ||
+      p.gold > 0;
 
     if (hasStuff) {
+      const lootX = dungeonId ? p.x : this.playerWorldX;
+      const lootY = dungeonId ? p.y : this.playerWorldY;
       this.droppedLoots.push({
-        x: this.playerWorldX,
-        y: this.playerWorldY,
-        weaponId: p.weapon?.id ?? null,
-        armorId: p.armor?.id ?? null,
-        accessoryId: p.accessory?.id ?? null,
-        equipmentIds: p.ownedEquipment.map((e) => e.id),
+        x: lootX,
+        y: lootY,
+        dungeonId,
+        floor: dungeonFloor,
+        equipmentIds: unequippedIds,
+        artifacts: droppedArtifacts.length > 0 ? droppedArtifacts : undefined,
         materials,
+        consumables,
+        gold: p.gold,
       });
     }
 
-    // Strip player of items
-    p.weapon = null;
-    p.armor = null;
-    p.accessory = null;
-    p.ownedEquipment = [];
+    // Strip unequipped items (keep equipped)
+    p.ownedEquipment = p.ownedEquipment.filter((e) => equippedIds.has(e.id));
     p.materials.clear();
-    p.recalcStats();
+    p.consumables.clear();
+    p.gold = 0;
   }
 
   private pickupLoot(game: Game, x: number, y: number): void {
-    const idx = this.droppedLoots.findIndex((l) => l.x === x && l.y === y);
+    // Only pick up world-map loot (no dungeonId)
+    const idx = this.droppedLoots.findIndex((l) => !l.dungeonId && l.x === x && l.y === y);
     if (idx < 0) return;
 
+    this.collectLoot(game, idx);
+  }
+
+  collectLoot(game: Game, idx: number): void {
     const loot = this.droppedLoots[idx];
     const p = game.player;
 
-    // Recover all owned equipment
+    // Recover equipment
     let eqCount = 0;
     for (const eqId of loot.equipmentIds ?? []) {
-      if (EQUIPMENT_DEFS[eqId] && !p.ownedEquipment.some((e) => e.id === eqId)) {
-        p.ownedEquipment.push(EQUIPMENT_DEFS[eqId]);
+      const eq =
+        EQUIPMENT_DEFS[eqId] ??
+        loot.artifacts?.find((a) => a.id === eqId) ??
+        p.ownedEquipment.find((e) => e.id === eqId);
+      if (eq && !p.ownedEquipment.some((e) => e.id === eqId)) {
+        p.ownedEquipment.push(eq);
         eqCount++;
       }
     }
-
-    // Re-equip what was worn
-    if (loot.weaponId && EQUIPMENT_DEFS[loot.weaponId]) {
-      p.weapon = EQUIPMENT_DEFS[loot.weaponId];
-    }
-    if (loot.armorId && EQUIPMENT_DEFS[loot.armorId]) {
-      p.armor = EQUIPMENT_DEFS[loot.armorId];
-    }
-    if (loot.accessoryId && EQUIPMENT_DEFS[loot.accessoryId]) {
-      p.accessory = EQUIPMENT_DEFS[loot.accessoryId];
-    }
-    p.recalcStats();
-
     if (eqCount > 0) {
       game.addMessage(`装備${eqCount}個を回収した！`);
     }
@@ -452,6 +476,28 @@ export class WorldScene implements Scene {
     }
     if (matCount > 0) {
       game.addMessage(`素材${matCount}個を回収した！`);
+    }
+
+    // Recover consumables
+    if (loot.consumables) {
+      for (const [name, count] of Object.entries(loot.consumables)) {
+        const def = ITEM_DEFS.find((d) => d.name === name && d.consumable);
+        if (def && count > 0) {
+          const existing = p.consumables.get(name);
+          if (existing) {
+            existing.count += count;
+          } else {
+            p.consumables.set(name, { def, count });
+          }
+        }
+      }
+      game.addMessage("消耗品を回収した！");
+    }
+
+    // Recover gold
+    if (loot.gold && loot.gold > 0) {
+      p.gold += loot.gold;
+      game.addMessage(`${loot.gold}Gを回収した！`);
     }
 
     this.droppedLoots.splice(idx, 1);
@@ -658,8 +704,9 @@ export class WorldScene implements Scene {
       }
     }
 
-    // Draw dropped loot
+    // Draw dropped loot (world-map only)
     for (const loot of this.droppedLoots) {
+      if (loot.dungeonId) continue;
       const lsx = loot.x - camX;
       const lsy = loot.y - camY;
       if (lsx >= 0 && lsx < MAP_WIDTH && lsy >= 0 && lsy < MAP_HEIGHT) {
@@ -692,9 +739,13 @@ export class WorldScene implements Scene {
       ? `<span style="color:#ffcc00">${poi.name}</span>  [Enter]で入る`
       : "ワールドマップ";
 
+    const hungerColor = p.hunger <= 0 ? "#ff2222" : p.hunger <= 20 ? "#ff8844" : "";
+    const hungerStyle = hungerColor ? ` style="color:${hungerColor};font-weight:bold"` : "";
+
     return (
       `<span class="hp-color">HP:${p.hp}/${p.maxHp}</span>  ` +
-      `<span class="fuel-color">満腹:${p.hunger}</span>  ` +
+      `<span class="fuel-color"${hungerStyle}>満腹:${p.hunger}</span>  ` +
+      `<span style="color:#ffdd44">${p.gold}G</span>  ` +
       `<span class="floor-color">${locStr}</span>`
     );
   }

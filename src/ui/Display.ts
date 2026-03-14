@@ -37,6 +37,12 @@ export class Display {
     } else {
       el.innerHTML = "";
     }
+
+    // Visual warnings
+    const p = game.player;
+    el.classList.toggle("hunger-warning", p.hunger <= 0 && game.isPlayable());
+    el.classList.toggle("hunger-low", p.hunger > 0 && p.hunger <= 20 && game.isPlayable());
+    el.classList.toggle("hp-critical", p.hp <= p.maxHp * 0.1 && p.hp > 0 && game.isPlayable());
   }
 
   private renderMessages(game: Game): void {

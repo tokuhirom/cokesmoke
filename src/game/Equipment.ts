@@ -7,6 +7,8 @@ export const ELEMENT_NAMES: Record<Element, string> = {
   lightning: "雷",
 };
 
+export type WeaponType = "sword" | "dagger" | "staff" | "axe" | "spear";
+
 export interface EquipmentDef {
   id: string;
   name: string;
@@ -17,6 +19,7 @@ export interface EquipmentDef {
   description: string;
   resistances?: Partial<Record<Element, number>>; // 0-100%
   isArtifact?: boolean;
+  weaponType?: WeaponType; // only for weapons
 }
 
 export const EQUIPMENT_DEFS: Record<string, EquipmentDef> = {
@@ -29,6 +32,17 @@ export const EQUIPMENT_DEFS: Record<string, EquipmentDef> = {
     defense: 0,
     spBonus: 0,
     description: "攻撃+2",
+    weaponType: "sword",
+  },
+  wooden_dagger: {
+    id: "wooden_dagger",
+    name: "木の短剣",
+    slot: "weapon",
+    attack: 1,
+    defense: 0,
+    spBonus: 0,
+    description: "攻撃+1",
+    weaponType: "dagger",
   },
   leather_armor: {
     id: "leather_armor",
@@ -48,6 +62,27 @@ export const EQUIPMENT_DEFS: Record<string, EquipmentDef> = {
     defense: 0,
     spBonus: 0,
     description: "攻撃+5",
+    weaponType: "sword",
+  },
+  iron_dagger: {
+    id: "iron_dagger",
+    name: "鉄の短剣",
+    slot: "weapon",
+    attack: 3,
+    defense: 0,
+    spBonus: 0,
+    description: "攻撃+3",
+    weaponType: "dagger",
+  },
+  iron_axe: {
+    id: "iron_axe",
+    name: "鉄の斧",
+    slot: "weapon",
+    attack: 7,
+    defense: 0,
+    spBonus: 0,
+    description: "攻撃+7 戦士専用",
+    weaponType: "axe",
   },
   iron_armor: {
     id: "iron_armor",
@@ -77,6 +112,7 @@ export const EQUIPMENT_DEFS: Record<string, EquipmentDef> = {
     defense: 0,
     spBonus: 0,
     description: "攻撃+8",
+    weaponType: "sword",
   },
   // Elf crafts
   spirit_staff: {
@@ -87,6 +123,7 @@ export const EQUIPMENT_DEFS: Record<string, EquipmentDef> = {
     defense: 0,
     spBonus: 30,
     description: "攻撃+4 MP上限+30",
+    weaponType: "staff",
   },
   elven_cloak: {
     id: "elven_cloak",
@@ -107,6 +144,17 @@ export const EQUIPMENT_DEFS: Record<string, EquipmentDef> = {
     defense: 0,
     spBonus: 0,
     description: "攻撃+12",
+    weaponType: "sword",
+  },
+  mithril_axe: {
+    id: "mithril_axe",
+    name: "ミスリルの戦斧",
+    slot: "weapon",
+    attack: 15,
+    defense: -2,
+    spBonus: 0,
+    description: "攻撃+15 防御-2 戦士専用",
+    weaponType: "axe",
   },
   adamantite_armor: {
     id: "adamantite_armor",
@@ -167,6 +215,13 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     crafterId: "merchant",
   },
   {
+    id: "craft_wooden_dagger",
+    name: "木の短剣を作る",
+    resultEquipment: "wooden_dagger",
+    materials: [{ materialId: "wood", count: 1 }],
+    crafterId: "merchant",
+  },
+  {
     id: "craft_leather_armor",
     name: "革の鎧を作る",
     resultEquipment: "leather_armor",
@@ -178,6 +233,20 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     name: "鉄の剣を作る",
     resultEquipment: "iron_sword",
     materials: [{ materialId: "iron_ore", count: 2 }],
+    crafterId: "dwarf_smith",
+  },
+  {
+    id: "craft_iron_dagger",
+    name: "鉄の短剣を作る",
+    resultEquipment: "iron_dagger",
+    materials: [{ materialId: "iron_ore", count: 1 }],
+    crafterId: "dwarf_smith",
+  },
+  {
+    id: "craft_iron_axe",
+    name: "鉄の斧を作る",
+    resultEquipment: "iron_axe",
+    materials: [{ materialId: "iron_ore", count: 3 }],
     crafterId: "dwarf_smith",
   },
   {
@@ -226,6 +295,16 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
     crafterId: "dwarf_smith",
   },
   {
+    id: "craft_mithril_axe",
+    name: "ミスリルの戦斧を作る",
+    resultEquipment: "mithril_axe",
+    materials: [
+      { materialId: "mithril_ore", count: 3 },
+      { materialId: "iron_ore", count: 2 },
+    ],
+    crafterId: "dwarf_smith",
+  },
+  {
     id: "craft_adamantite_armor",
     name: "アダマンの鎧を作る",
     resultEquipment: "adamantite_armor",
@@ -245,6 +324,37 @@ export const CRAFT_RECIPES: CraftRecipe[] = [
   },
 ];
 
+export interface ConsumableCraftRecipe {
+  id: string;
+  name: string;
+  resultItem: string; // item name
+  count: number; // how many produced
+  materials: { materialId: string; count: number }[];
+  crafterId: string;
+}
+
+export const CONSUMABLE_CRAFT_RECIPES: ConsumableCraftRecipe[] = [
+  {
+    id: "craft_wood_arrow",
+    name: "木の矢を作る（5本）",
+    resultItem: "木の矢",
+    count: 5,
+    materials: [{ materialId: "wood", count: 1 }],
+    crafterId: "merchant",
+  },
+  {
+    id: "craft_iron_arrow",
+    name: "鉄の矢を作る（5本）",
+    resultItem: "鉄の矢",
+    count: 5,
+    materials: [
+      { materialId: "wood", count: 1 },
+      { materialId: "iron_ore", count: 1 },
+    ],
+    crafterId: "merchant",
+  },
+];
+
 // --- Random Artifact Generation ---
 
 const ARTIFACT_PREFIXES = [
@@ -260,7 +370,15 @@ const ARTIFACT_PREFIXES = [
   "魔王の",
 ];
 
-const ARTIFACT_WEAPON_NAMES = ["剣", "斧", "槍", "刀", "短剣", "大剣", "杖"];
+const ARTIFACT_WEAPON_NAMES: { name: string; type: WeaponType }[] = [
+  { name: "剣", type: "sword" },
+  { name: "斧", type: "axe" },
+  { name: "槍", type: "spear" },
+  { name: "刀", type: "sword" },
+  { name: "短剣", type: "dagger" },
+  { name: "大剣", type: "sword" },
+  { name: "杖", type: "staff" },
+];
 const ARTIFACT_ARMOR_NAMES = ["鎧", "胸当て", "法衣", "外套", "甲冑"];
 const ARTIFACT_ACCESSORY_NAMES = ["指輪", "首飾り", "腕輪", "護符", "冠"];
 
@@ -272,10 +390,14 @@ export function generateArtifact(floor: number): EquipmentDef {
 
   const prefix = ARTIFACT_PREFIXES[Math.floor(Math.random() * ARTIFACT_PREFIXES.length)];
   let baseName: string;
+  let weaponType: WeaponType | undefined;
   switch (slot) {
-    case "weapon":
-      baseName = ARTIFACT_WEAPON_NAMES[Math.floor(Math.random() * ARTIFACT_WEAPON_NAMES.length)];
+    case "weapon": {
+      const entry = ARTIFACT_WEAPON_NAMES[Math.floor(Math.random() * ARTIFACT_WEAPON_NAMES.length)];
+      baseName = entry.name;
+      weaponType = entry.type;
       break;
+    }
     case "armor":
       baseName = ARTIFACT_ARMOR_NAMES[Math.floor(Math.random() * ARTIFACT_ARMOR_NAMES.length)];
       break;
@@ -333,5 +455,6 @@ export function generateArtifact(floor: number): EquipmentDef {
     description: parts.join(" "),
     resistances: Object.keys(resistances).length > 0 ? resistances : undefined,
     isArtifact: true,
+    weaponType,
   };
 }

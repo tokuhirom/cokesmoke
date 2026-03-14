@@ -213,6 +213,13 @@ export class Game {
           const skill = SKILL_DEFS.find((s) => s.name === skillName);
           if (skill) this.player.skills.push(skill);
         }
+        // Ranger starts with arrows
+        if (job.id === "ranger") {
+          const arrowDef = ITEM_DEFS.find((d) => d.name === "木の矢");
+          if (arrowDef) {
+            this.player.consumables.set("木の矢", { def: arrowDef, count: 10 });
+          }
+        }
         this.showGiftSelection(worldName, seed);
       });
     }
@@ -274,6 +281,9 @@ export class Game {
       this.player.spRegenBonus = saved.spRegenBonus ?? 0;
       this.player.hungerCostMult = saved.hungerCostMult ?? 1.0;
       this.player.trapEvadeBonus = saved.trapEvadeBonus ?? 0;
+      this.player.allowedWeapons =
+        (saved.allowedWeapons as import("./Equipment").WeaponType[] | null) ?? null;
+      this.player.learnableSkills = saved.learnableSkills ?? null;
     }
 
     // Restore gift
@@ -349,13 +359,42 @@ export class Game {
     this.tutorial = null;
     this.messages = ["冒険を再開した。"];
     this.worldScene = new WorldScene(saved.seed);
-    this.currentScene = this.worldScene;
-    this.state = "world";
     this.worldScene.onEnter(this);
     this.worldScene.playerWorldX = saved.worldX;
     this.worldScene.playerWorldY = saved.worldY;
-    this.player.placeOnMap(saved.worldX, saved.worldY);
     this.worldScene.droppedLoots = saved.droppedLoots ?? [];
+
+    // Restore dungeon state if player was in a dungeon
+    if (saved.inDungeonId) {
+      const ddef = DUNGEON_DEFS.find((d) => d.id === saved.inDungeonId);
+      if (ddef) {
+        const scene = new DungeonScene(ddef);
+        this.dungeonScene = scene;
+        this.currentScene = scene;
+        this.state = "dungeon";
+        scene.currentFloor = saved.dungeonFloor ?? 1;
+        scene.generateFloor(this);
+        // Place player at saved position (not the default start)
+        if (saved.dungeonPlayerX != null && saved.dungeonPlayerY != null) {
+          this.player.placeOnMap(saved.dungeonPlayerX, saved.dungeonPlayerY);
+          scene.computePlayerFOV(this);
+        }
+        if (this.companion) {
+          this.companion.x = this.player.x;
+          this.companion.y = this.player.y + 1;
+          this.companion.hp = this.companion.maxHp;
+        }
+        this.addMessage(`${ddef.name} ${scene.currentFloor}階で目が覚めた...`);
+      } else {
+        this.currentScene = this.worldScene;
+        this.state = "world";
+        this.player.placeOnMap(saved.worldX, saved.worldY);
+      }
+    } else {
+      this.currentScene = this.worldScene;
+      this.state = "world";
+      this.player.placeOnMap(saved.worldX, saved.worldY);
+    }
 
     this.render();
   }
@@ -385,6 +424,8 @@ export class Game {
       spRegenBonus: this.player.spRegenBonus,
       hungerCostMult: this.player.hungerCostMult,
       trapEvadeBonus: this.player.trapEvadeBonus,
+      allowedWeapons: this.player.allowedWeapons,
+      learnableSkills: this.player.learnableSkills,
       playerSkills: this.player.skills.map((s) => s.name),
       weaponId: this.player.weapon?.id ?? null,
       armorId: this.player.armor?.id ?? null,
@@ -403,6 +444,10 @@ export class Game {
       worldY: this.worldScene?.playerWorldY ?? 0,
       clearedDungeons: [...this.clearedDungeons],
       droppedLoots: this.worldScene?.droppedLoots ?? [],
+      inDungeonId: this.dungeonScene?.dungeonDef.id ?? null,
+      dungeonFloor: this.dungeonScene?.currentFloor ?? undefined,
+      dungeonPlayerX: this.state === "dungeon" ? this.player.x : undefined,
+      dungeonPlayerY: this.state === "dungeon" ? this.player.y : undefined,
     };
 
     saveWorld(data);
@@ -427,6 +472,7 @@ export class Game {
       this.companion.hp = this.companion.maxHp;
     }
 
+    this.saveCurrentWorld();
     this.render();
   }
 
@@ -505,6 +551,13 @@ export class Game {
     });
   }
 
+  private showHelpFromMenu(): void {
+    renderHelpScreen();
+    document.getElementById("btn-back")!.addEventListener("click", () => {
+      this.showGameMenu();
+    });
+  }
+
   showEquipMenu(): void {
     if (!this.isPlayable()) return;
     renderEquipMenu(this.player);
@@ -540,6 +593,9 @@ export class Game {
     });
     document.getElementById("menu-inv")!.addEventListener("click", () => {
       this.showInventoryMenu();
+    });
+    document.getElementById("menu-help")!.addEventListener("click", () => {
+      this.showHelpFromMenu();
     });
     document.getElementById("menu-title")!.addEventListener("click", () => {
       if (confirm("タイトルに戻りますか？（進行状況はセーブされます）")) {
@@ -711,8 +767,21 @@ export class Game {
     this.state = "gameover";
 
     if (this.worldScene) {
-      this.worldScene.dropLoot(this);
+      if (this.dungeonScene) {
+        // Drop loot inside dungeon
+        this.worldScene.dropLoot(
+          this,
+          this.dungeonScene.dungeonDef.id,
+          this.dungeonScene.currentFloor,
+        );
+      } else {
+        // Drop loot on world map
+        this.worldScene.dropLoot(this);
+      }
     }
+
+    // Save immediately so dropped loot persists through browser close
+    this.saveCurrentWorld();
 
     this.showGoddessScene();
   }
@@ -767,6 +836,7 @@ export class Game {
     this.messages = [];
     this.addMessage("...始まりの村の近くで目が覚めた");
     this.addMessage("落としたアイテムは死んだ場所に残っている（!マーク）");
+    this.addMessage("装備中のアイテムは無事だった");
 
     this.saveCurrentWorld();
     this.render();

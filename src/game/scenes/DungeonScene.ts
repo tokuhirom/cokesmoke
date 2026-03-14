@@ -211,6 +211,13 @@ export class DungeonScene implements Scene {
   }
 
   generateFloor(game: Game): void {
+    // Seed RNG for deterministic dungeon LAYOUT (terrain only)
+    if (!this.isTutorial && game.worldScene) {
+      const worldSeed = game.worldScene.seed;
+      const dungeonIdx = DUNGEON_DEFS.findIndex((d) => d.id === this.dungeonDef.id);
+      ROT.RNG.setSeed(worldSeed * 10000 + dungeonIdx * 100 + this.currentFloor);
+    }
+
     this.dungeon = new Dungeon(game, this.currentFloor);
     if (this.isTutorial) {
       this.dungeon.generateTutorial();
@@ -228,10 +235,16 @@ export class DungeonScene implements Scene {
       this.dungeon.placeUpstairs();
     }
 
+    // Reset RNG to non-deterministic for enemies/items/traps (re-randomize each entry)
+    if (!this.isTutorial) {
+      ROT.RNG.setSeed(Date.now());
+    }
+
     game.player.placeOnMap(this.dungeon.startX, this.dungeon.startY);
     this.enemies = spawnEnemies(game, this.currentFloor, this.dungeonDef);
     this.items = spawnItems(game, this.currentFloor, this.dungeonDef.id);
     this.traps = this.isTutorial ? [] : this.spawnTraps();
+
     this.saveFloorCache();
     this.computePlayerFOV(game);
     if (this.currentFloor > 0) {
@@ -449,6 +462,7 @@ export class DungeonScene implements Scene {
     } else {
       this.generateFloor(game);
     }
+    game.saveCurrentWorld();
     game.render();
   }
 
@@ -471,6 +485,7 @@ export class DungeonScene implements Scene {
       game.player.placeOnMap(this.dungeon.stairsX, this.dungeon.stairsY);
     }
     game.addMessage(`${this.currentFloor}階に戻った`);
+    game.saveCurrentWorld();
     game.render();
   }
 
@@ -482,6 +497,20 @@ export class DungeonScene implements Scene {
         game.player.addConsumable(item.def);
       } else {
         item.def.effect(game);
+      }
+    }
+
+    // Check for dropped loot in dungeon
+    if (game.worldScene) {
+      const lootIdx = game.worldScene.droppedLoots.findIndex(
+        (l) =>
+          l.dungeonId === this.dungeonDef.id &&
+          l.floor === this.currentFloor &&
+          l.x === x &&
+          l.y === y,
+      );
+      if (lootIdx >= 0) {
+        game.worldScene.collectLoot(game, lootIdx);
       }
     }
   }
@@ -499,19 +528,36 @@ export class DungeonScene implements Scene {
     }
   }
 
+  private getCamera(player: { x: number; y: number }): { camX: number; camY: number } {
+    const dw = this.isTutorial ? MAP_WIDTH : this.dungeon.width;
+    const dh = this.isTutorial ? MAP_HEIGHT : this.dungeon.height;
+    const camX = Math.max(0, Math.min(dw - MAP_WIDTH, player.x - Math.floor(MAP_WIDTH / 2)));
+    const camY = Math.max(0, Math.min(dh - MAP_HEIGHT, player.y - Math.floor(MAP_HEIGHT / 2)));
+    return { camX, camY };
+  }
+
   render(display: ROT.Display, game: Game): void {
     const player = game.player;
+    const { camX, camY } = this.getCamera(player);
 
-    for (let x = 0; x < MAP_WIDTH; x++) {
-      for (let y = 0; y < MAP_HEIGHT; y++) {
-        const key = Dungeon.key(x, y);
-        const tile = this.dungeon.getTile(x, y);
-        if (!tile) continue;
+    for (let sx = 0; sx < MAP_WIDTH; sx++) {
+      for (let sy = 0; sy < MAP_HEIGHT; sy++) {
+        const wx = camX + sx;
+        const wy = camY + sy;
+        const key = Dungeon.key(wx, wy);
+        const tile = this.dungeon.getTile(wx, wy);
+        if (!tile) {
+          display.draw(sx, sy, " ", "#000", "#0d0d1a");
+          continue;
+        }
 
         const visible = player.visibleTiles.has(key);
         const explored = tile.explored;
 
-        if (!visible && !explored) continue;
+        if (!visible && !explored) {
+          display.draw(sx, sy, " ", "#000", "#0d0d1a");
+          continue;
+        }
 
         let fg: string;
         let bg: string | null = null;
@@ -557,41 +603,70 @@ export class DungeonScene implements Scene {
           }
         }
 
-        display.draw(x, y, ch, fg, bg);
+        display.draw(sx, sy, ch, fg, bg);
       }
     }
 
     // Draw revealed traps
     for (const trap of this.traps) {
       if (trap.revealed && !trap.triggered && player.visibleTiles.has(`${trap.x},${trap.y}`)) {
-        display.draw(trap.x, trap.y, trap.def.char, "#ff8800", null);
+        const tsx = trap.x - camX;
+        const tsy = trap.y - camY;
+        if (tsx >= 0 && tsx < MAP_WIDTH && tsy >= 0 && tsy < MAP_HEIGHT) {
+          display.draw(tsx, tsy, trap.def.char, "#ff8800", null);
+        }
       }
     }
 
     for (const item of this.items) {
       if (!item.picked && player.visibleTiles.has(`${item.x},${item.y}`)) {
-        display.draw(item.x, item.y, item.def.char, COLOR_ITEM, null);
+        const isx = item.x - camX;
+        const isy = item.y - camY;
+        if (isx >= 0 && isx < MAP_WIDTH && isy >= 0 && isy < MAP_HEIGHT) {
+          display.draw(isx, isy, item.def.char, COLOR_ITEM, null);
+        }
+      }
+    }
+
+    // Draw dropped loot in this dungeon floor
+    if (game.worldScene) {
+      for (const loot of game.worldScene.droppedLoots) {
+        if (
+          loot.dungeonId === this.dungeonDef.id &&
+          loot.floor === this.currentFloor &&
+          player.visibleTiles.has(`${loot.x},${loot.y}`)
+        ) {
+          const lsx = loot.x - camX;
+          const lsy = loot.y - camY;
+          if (lsx >= 0 && lsx < MAP_WIDTH && lsy >= 0 && lsy < MAP_HEIGHT) {
+            display.draw(lsx, lsy, "!", "#ff44ff", null);
+          }
+        }
       }
     }
 
     for (const enemy of this.enemies) {
       if (enemy.isAlive() && player.visibleTiles.has(`${enemy.x},${enemy.y}`)) {
-        display.draw(enemy.x, enemy.y, enemy.char, COLOR_ENEMY, null);
+        const esx = enemy.x - camX;
+        const esy = enemy.y - camY;
+        if (esx >= 0 && esx < MAP_WIDTH && esy >= 0 && esy < MAP_HEIGHT) {
+          display.draw(esx, esy, enemy.char, COLOR_ENEMY, null);
+        }
       }
     }
 
     // Draw companion
     if (game.companion && game.companion.isAlive()) {
-      display.draw(
-        game.companion.x,
-        game.companion.y,
-        game.companion.char,
-        game.companion.color,
-        null,
-      );
+      const csx = game.companion.x - camX;
+      const csy = game.companion.y - camY;
+      if (csx >= 0 && csx < MAP_WIDTH && csy >= 0 && csy < MAP_HEIGHT) {
+        display.draw(csx, csy, game.companion.char, game.companion.color, null);
+      }
     }
 
-    display.draw(player.x, player.y, player.char, COLOR_PLAYER, null);
+    const psx = player.x - camX;
+    const psy = player.y - camY;
+    display.draw(psx, psy, player.char, COLOR_PLAYER, null);
   }
 
   getStatusHTML(game: Game): string {
@@ -624,9 +699,12 @@ export class DungeonScene implements Scene {
     const resistStr =
       resists.length > 0 ? ` <span style="color:#88aacc">[${resists.join(" ")}]</span>` : "";
 
+    const hungerColor = p.hunger <= 0 ? "#ff2222" : p.hunger <= 20 ? "#ff8844" : "";
+    const hungerStyle = hungerColor ? ` style="color:${hungerColor};font-weight:bold"` : "";
+
     return (
       `<span class="hp-color">HP:${hpBar} ${p.hp}/${p.maxHp}</span>  ` +
-      `<span class="fuel-color">満腹:${p.hunger}</span>  ` +
+      `<span class="fuel-color"${hungerStyle}>満腹:${p.hunger}</span>  ` +
       `<span style="color:#ffdd44">${p.gold}G</span>  ` +
       `<span class="floor-color">${floorLabel}</span>${armorStr}${weaponStr}<br>` +
       `<span class="sp-color">MP:[${spBar}] ${p.sp}/${p.maxSp}</span>` +

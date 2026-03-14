@@ -150,6 +150,15 @@ export function renderHelpScreen(): void {
       食料(<span style="color:#44ff88">\u2666</span>)を拾って空腹を凌ごう。
       最深部に到達すると踏破完了。</p>
 
+      <h2>職業</h2>
+      <table>
+        <tr><td>戦士</td><td>攻撃+5 防御+3 HP+20 剣・斧装備可 習得:バリア</td></tr>
+        <tr><td>魔法使い</td><td>MP+40 MP回復速い 習得:火・メテオ・バリア・テレポート</td></tr>
+        <tr><td>僧侶</td><td>防御+2 HP自然回復 習得:ヒール・ヒールII・バリア・テレポート</td></tr>
+        <tr><td>盗賊</td><td>満腹消費半減 罠回避+ 習得:テレポート・射撃</td></tr>
+        <tr><td>狩人</td><td>攻撃+3 短剣のみ 射撃は矢を消費 習得:射撃</td></tr>
+      </table>
+
       <h2>装備と素材</h2>
       <p>迷宮で素材を集め、各地の職人に装備を作ってもらおう。
       職人はスカウトして始まりの村に住み着かせることもできる。</p>
@@ -223,6 +232,7 @@ export function renderGameMenu(): void {
       <button class="menu-btn" id="menu-status">ステータス</button>
       <button class="menu-btn" id="menu-equip">装備変更</button>
       <button class="menu-btn" id="menu-inv">持ち物</button>
+      <button class="menu-btn secondary" id="menu-help">ヘルプ</button>
       <button class="menu-btn secondary" id="menu-title">タイトルに戻る</button>
       <button class="menu-btn secondary" id="menu-close" style="margin-top:8px">閉じる</button>
     </div>

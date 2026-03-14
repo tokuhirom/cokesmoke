@@ -201,6 +201,24 @@
         0%, 100% { opacity: 1; }
         50% { opacity: 0.3; }
       }
+      @keyframes flash-hunger {
+        0%, 100% { color: #ff2222; opacity: 1; }
+        50% { opacity: 0.2; }
+      }
+      @keyframes flash-hunger-low {
+        0%, 100% { color: #ff8844; opacity: 1; }
+        50% { opacity: 0.4; }
+      }
+      #status-bar.hunger-warning .fuel-color {
+        animation: flash-hunger 0.6s infinite;
+      }
+      #status-bar.hunger-low .fuel-color {
+        animation: flash-hunger-low 1.2s infinite;
+      }
+      #status-bar.hp-critical .hp-color {
+        color: #ffdd44;
+        font-weight: bold;
+      }
       .tutorial-dialog {
         max-width: 340px;
         background: #16213eee;
