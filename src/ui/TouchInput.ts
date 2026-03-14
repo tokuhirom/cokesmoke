@@ -276,10 +276,15 @@ export class TouchInput {
         const tile = scene.dungeon.getTile(p.x, p.y);
         if (tile && tile.char === "<") {
           descendBtn.textContent = "上る<";
+        } else if (tile && tile.char === "◎") {
+          descendBtn.textContent = "脱出◎";
         } else {
           descendBtn.textContent = "階段>";
         }
-        descendBtn.disabled = !(tile && (tile.char === ">" || tile.char === "<"));
+        descendBtn.disabled = !(
+          tile &&
+          (tile.char === ">" || tile.char === "<" || tile.char === "◎")
+        );
       } else if (this.game.state === "world") {
         const scene = this.game.currentScene as import("../game/scenes/WorldScene").WorldScene;
         const poi = scene.pois.find(

@@ -174,6 +174,15 @@ export class Dungeon {
     floor(this.stairsX, this.stairsY, ">");
   }
 
+  placeExitPortal(): void {
+    this.tiles.set(Dungeon.key(this.stairsX, this.stairsY), {
+      char: "◎",
+      walkable: true,
+      transparent: true,
+      explored: false,
+    });
+  }
+
   placeUpstairs(): void {
     this.tiles.set(Dungeon.key(this.startX, this.startY), {
       char: "<",

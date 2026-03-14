@@ -95,6 +95,11 @@ export class DungeonScene implements Scene {
       this.dungeon.generate();
     }
 
+    // Final floor: replace downstairs with exit portal
+    if (!this.isTutorial && this.currentFloor >= this.dungeonDef.floors) {
+      this.dungeon.placeExitPortal();
+    }
+
     // Place upstairs at start position for going back
     if (!this.isTutorial) {
       this.dungeon.placeUpstairs();
@@ -183,6 +188,10 @@ export class DungeonScene implements Scene {
       this.prevFloor(game);
       return true;
     }
+    if (tile && tile.char === "◎") {
+      this.nextFloor(game); // triggers dungeon clear
+      return true;
+    }
     return false;
   }
 
@@ -214,6 +223,9 @@ export class DungeonScene implements Scene {
 
     if (tile && tile.char === ">") {
       game.addMessage("階段を見つけた！ >キーで降りる");
+    }
+    if (tile && tile.char === "◎") {
+      game.addMessage("転移陣だ！ >キーで地上に脱出できる");
     }
     if (tile && tile.char === "<") {
       if (this.currentFloor <= 1) {
@@ -304,8 +316,8 @@ export class DungeonScene implements Scene {
         let ch = tile.char;
 
         if (!visible) {
-          if (tile.char === ">" || tile.char === "<") {
-            fg = "#998800";
+          if (tile.char === ">" || tile.char === "<" || tile.char === "◎") {
+            fg = tile.char === "◎" ? "#886600" : "#998800";
             bg = "#0d0d1a";
           } else {
             fg = COLOR_EXPLORED;
@@ -326,6 +338,10 @@ export class DungeonScene implements Scene {
             case "<":
               fg = COLOR_STAIRS;
               bg = "#1a2030";
+              break;
+            case "◎":
+              fg = "#ffdd44";
+              bg = "#2a2020";
               break;
             case " ":
               ch = "\u00b7";
