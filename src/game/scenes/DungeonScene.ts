@@ -70,6 +70,12 @@ export const DUNGEON_DEFS: DungeonDef[] = [
   },
 ];
 
+interface FloorCache {
+  dungeon: Dungeon;
+  enemies: Enemy[];
+  items: ItemInstance[];
+}
+
 export class DungeonScene implements Scene {
   dungeon!: Dungeon;
   enemies: Enemy[] = [];
@@ -77,6 +83,7 @@ export class DungeonScene implements Scene {
   currentFloor = 1;
   dungeonDef: DungeonDef;
   isTutorial: boolean;
+  private floorCache: Map<number, FloorCache> = new Map();
 
   constructor(dungeonDef: DungeonDef, isTutorial = false) {
     this.dungeonDef = dungeonDef;
@@ -85,7 +92,29 @@ export class DungeonScene implements Scene {
 
   onEnter(game: Game): void {
     this.currentFloor = this.isTutorial ? 0 : 1;
+    this.floorCache.clear();
     this.generateFloor(game);
+  }
+
+  private saveFloorCache(): void {
+    this.floorCache.set(this.currentFloor, {
+      dungeon: this.dungeon,
+      enemies: this.enemies,
+      items: this.items,
+    });
+  }
+
+  private loadFloorCache(floor: number, game: Game, spawnX: number, spawnY: number): boolean {
+    const cached = this.floorCache.get(floor);
+    if (!cached) return false;
+
+    this.dungeon = cached.dungeon;
+    this.enemies = cached.enemies;
+    this.items = cached.items;
+    game.player.placeOnMap(spawnX, spawnY);
+    this.computePlayerFOV(game);
+    game.addMessage(`--- ${this.dungeonDef.name} ${this.currentFloor}階 ---`);
+    return true;
   }
 
   generateFloor(game: Game): void {
@@ -109,6 +138,7 @@ export class DungeonScene implements Scene {
     game.player.placeOnMap(this.dungeon.startX, this.dungeon.startY);
     this.enemies = spawnEnemies(game, this.currentFloor, this.dungeonDef);
     this.items = spawnItems(game, this.currentFloor, this.dungeonDef.id);
+    this.saveFloorCache();
     this.computePlayerFOV(game);
     if (this.currentFloor > 0) {
       game.addMessage(`--- ${this.dungeonDef.name} ${this.currentFloor}階 ---`);
@@ -268,8 +298,16 @@ export class DungeonScene implements Scene {
       return;
     }
 
+    this.saveFloorCache();
     this.currentFloor++;
-    this.generateFloor(game);
+
+    // Try to load cached floor (spawn at upstairs position)
+    const cached = this.floorCache.get(this.currentFloor);
+    if (cached) {
+      this.loadFloorCache(this.currentFloor, game, cached.dungeon.startX, cached.dungeon.startY);
+    } else {
+      this.generateFloor(game);
+    }
     game.render();
   }
 
@@ -280,10 +318,17 @@ export class DungeonScene implements Scene {
       return;
     }
 
+    this.saveFloorCache();
     this.currentFloor--;
-    this.generateFloor(game);
-    // Spawn player at stairs (down) position so they appear near the exit
-    game.player.placeOnMap(this.dungeon.stairsX, this.dungeon.stairsY);
+
+    // Try to load cached floor (spawn at stairs/down position)
+    const cached = this.floorCache.get(this.currentFloor);
+    if (cached) {
+      this.loadFloorCache(this.currentFloor, game, cached.dungeon.stairsX, cached.dungeon.stairsY);
+    } else {
+      this.generateFloor(game);
+      game.player.placeOnMap(this.dungeon.stairsX, this.dungeon.stairsY);
+    }
     game.addMessage(`${this.currentFloor}階に戻った`);
     game.render();
   }
