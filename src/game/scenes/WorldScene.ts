@@ -152,9 +152,12 @@ export class WorldScene implements Scene {
       this.addPOI(pos[0], pos[1], "town", t.id, t.name);
     }
 
-    // Dungeons
+    // First dungeon: place near starting village (distance 4-8)
+    const firstDungeonPos = this.findNearPOI(startPos[0], startPos[1], 4, 8, candidates);
+    this.addPOI(firstDungeonPos[0], firstDungeonPos[1], "dungeon", "first", "始まりの迷宮");
+
+    // Other dungeons: spread out
     const dungeonSpots = [
-      { id: "first", name: "始まりの迷宮", minDist: 6 },
       { id: "forest", name: "妖精の森窟", minDist: 10 },
       { id: "fire", name: "灼熱の坑道", minDist: 12 },
       { id: "abyss", name: "深淵の迷宮", minDist: 15 },
@@ -209,6 +212,29 @@ export class WorldScene implements Scene {
     });
     if (valid.length === 0) return this.findNearestGrass(fx + minDist, fy, tiles);
     return valid[Math.floor(ROT.RNG.getUniform() * valid.length)];
+  }
+
+  private findNearPOI(
+    px: number,
+    py: number,
+    minDist: number,
+    maxDist: number,
+    tiles: [number, number][],
+  ): [number, number] {
+    // Find a tile that is minDist-maxDist from (px,py) and not overlapping existing POIs
+    const valid = tiles.filter(([x, y]) => {
+      const d = Math.abs(x - px) + Math.abs(y - py);
+      if (d < minDist || d > maxDist) return false;
+      return this.pois.every((poi) => {
+        const pd = Math.abs(x - poi.x) + Math.abs(y - poi.y);
+        return pd >= 3;
+      });
+    });
+    if (valid.length > 0) {
+      return valid[Math.floor(ROT.RNG.getUniform() * valid.length)];
+    }
+    // Fallback: relax maxDist
+    return this.findNearPOI(px, py, minDist, maxDist + 4, tiles);
   }
 
   private findDistantFromAll(minDist: number, tiles: [number, number][]): [number, number] {
