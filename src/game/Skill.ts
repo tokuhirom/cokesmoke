@@ -71,13 +71,12 @@ export const SKILL_DEFS: SkillDef[] = [
   },
   {
     name: "ヒール",
-    description: "HPを30%回復",
+    description: "HP25回復",
     spCost: 15,
     execute: (game) => {
       const p = game.player;
-      const heal = Math.floor(p.maxHp * 0.3);
-      const actual = Math.min(heal, p.maxHp - p.hp);
-      p.hp = Math.min(p.maxHp, p.hp + heal);
+      const actual = Math.min(25, p.maxHp - p.hp);
+      p.hp = Math.min(p.maxHp, p.hp + 25);
       if (actual > 0) {
         game.addMessage(`ヒール！HP${actual}回復！`);
       } else {
