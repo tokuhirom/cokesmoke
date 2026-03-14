@@ -95,6 +95,7 @@ export const TOWN_DEFS: TownDef[] = [
           "いらっしゃい！まだ品揃えは少ないが...",
           "冒険者が増えればこの村も発展するだろう。",
         ],
+        crafterId: "merchant",
       },
     ],
   },
@@ -332,9 +333,9 @@ export class TownScene implements Scene {
       return;
     }
 
-    // Merchant in starting village: show disassemble menu
+    // Merchant in starting village: show shop menu (craft + disassemble)
     if (npc.name === "商人" && this.townDef.id === "home") {
-      this.openSellMenu(game);
+      this.openShopMenu(game, npc);
       return;
     }
 
@@ -454,6 +455,31 @@ export class TownScene implements Scene {
 
     // Refresh craft menu
     this.openCraftMenu(game, npc);
+  }
+
+  private openShopMenu(game: Game, npc: NpcDef): void {
+    this.showingDialog = true;
+    const overlay = document.getElementById("overlay")!;
+    overlay.classList.remove("hidden");
+
+    let html = '<div class="tutorial-dialog"><p>商人の店</p>';
+    html += '<button class="menu-btn" id="shop-craft">作成（素材から装備を作る）</button>';
+    html += '<button class="menu-btn" id="shop-disassemble">解体（装備を素材に戻す）</button>';
+    html += '<button class="menu-btn secondary" id="shop-close">閉じる</button>';
+    html += "</div>";
+    overlay.innerHTML = html;
+
+    document.getElementById("shop-craft")!.addEventListener("click", () => {
+      this.openCraftMenu(game, npc);
+    });
+    document.getElementById("shop-disassemble")!.addEventListener("click", () => {
+      this.openSellMenu(game);
+    });
+    document.getElementById("shop-close")!.addEventListener("click", () => {
+      this.showingDialog = false;
+      overlay.classList.add("hidden");
+      game.render();
+    });
   }
 
   private getDisassembleResult(eq: EquipmentDef): { materialId: string; count: number }[] {

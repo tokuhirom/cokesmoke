@@ -139,6 +139,8 @@ export interface MaterialDef {
 }
 
 export const MATERIAL_DEFS: MaterialDef[] = [
+  { id: "wood", name: "木材", char: "=", rarity: 0.5, dungeons: ["first", "forest"] },
+  { id: "leather", name: "獣の皮", char: "~", rarity: 0.4, dungeons: ["first", "forest"] },
   { id: "iron_ore", name: "鉄鉱石", char: "*", rarity: 0.4, dungeons: ["first", "forest"] },
   { id: "dragon_scale", name: "竜の鱗", char: "$", rarity: 0.15, dungeons: ["fire", "abyss"] },
   { id: "dragon_fang", name: "竜の牙", char: "%", rarity: 0.1, dungeons: ["fire", "abyss"] },
@@ -157,6 +159,20 @@ export interface CraftRecipe {
 }
 
 export const CRAFT_RECIPES: CraftRecipe[] = [
+  {
+    id: "craft_wooden_sword",
+    name: "木の剣を作る",
+    resultEquipment: "wooden_sword",
+    materials: [{ materialId: "wood", count: 2 }],
+    crafterId: "merchant",
+  },
+  {
+    id: "craft_leather_armor",
+    name: "革の鎧を作る",
+    resultEquipment: "leather_armor",
+    materials: [{ materialId: "leather", count: 2 }],
+    crafterId: "merchant",
+  },
   {
     id: "craft_iron_sword",
     name: "鉄の剣を作る",
