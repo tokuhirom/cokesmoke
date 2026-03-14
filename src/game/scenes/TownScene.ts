@@ -162,8 +162,6 @@ export const TOWN_DEFS: TownDef[] = [
         dialog: [
           "私はエリーナ。精霊魔法の使い手よ。",
           "素材を持ってきてくれれば、魔法の装備を作れるわ。",
-          "精霊石は「妖精の森窟」で採れるの。",
-          "精霊の杖やエルフのマントが作れるわよ。",
           "あなたの村に行ってもいいかしら？",
         ],
         crafterId: "elf_enchanter",
@@ -175,11 +173,7 @@ export const TOWN_DEFS: TownDef[] = [
               color: "#88ffaa",
               x: 0,
               y: 0,
-              dialog: [
-                "素材を持ってきたのね。",
-                "精霊石は妖精の森窟で手に入るわ。",
-                "精霊の力を込めて、装備を作ってあげる。",
-              ],
+              dialog: ["素材を持ってきたのね。", "精霊の力を込めて、装備を作ってあげる。"],
               crafterId: "elf_enchanter",
             };
             game.recruitNpc(npcDef);
@@ -219,9 +213,6 @@ export const TOWN_DEFS: TownDef[] = [
         dialog: [
           "オレはボルド。ドワーフの鍛冶師だ。",
           "素材さえあれば最高の武具を打ってやるぜ！",
-          "鉄鉱石は「始まりの迷宮」や「妖精の森窟」で手に入る。",
-          "竜の鱗や牙は「灼熱の坑道」だ。ミスリル鉱もそこにある。",
-          "最高のアダマン鉱は「深淵の迷宮」にしかねえ。",
           "おまえの村に工房を構えてもいいぞ。",
         ],
         crafterId: "dwarf_smith",
@@ -233,12 +224,7 @@ export const TOWN_DEFS: TownDef[] = [
               color: "#ffaa44",
               x: 0,
               y: 0,
-              dialog: [
-                "おう！素材を持ってきたか？",
-                "鉄鉱石→始まりの迷宮・妖精の森窟",
-                "竜素材・ミスリル→灼熱の坑道",
-                "アダマン鉱→深淵の迷宮だ。集めてこい！",
-              ],
+              dialog: ["おう！素材を持ってきたか？", "いい素材があれば最高の武具を打ってやるぜ！"],
               crafterId: "dwarf_smith",
             };
             game.recruitNpc(npcDef);
