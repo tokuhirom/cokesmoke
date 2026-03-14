@@ -2,7 +2,13 @@ import type * as ROT from "rot-js";
 import type { Scene } from "./Scene";
 import type { Game } from "../Game";
 import { MAP_WIDTH, MAP_HEIGHT, COLOR_PLAYER } from "../../constants";
-import { CRAFT_RECIPES, EQUIPMENT_DEFS, MATERIAL_DEFS, type CraftRecipe } from "../Equipment";
+import {
+  CRAFT_RECIPES,
+  EQUIPMENT_DEFS,
+  MATERIAL_DEFS,
+  type CraftRecipe,
+  type EquipmentDef,
+} from "../Equipment";
 
 export interface NpcDef {
   char: string;
@@ -326,6 +332,12 @@ export class TownScene implements Scene {
       return;
     }
 
+    // Merchant in starting village: show disassemble menu
+    if (npc.name === "商人" && this.townDef.id === "home") {
+      this.openSellMenu(game);
+      return;
+    }
+
     // Normal dialog
     this.dialogQueue = [...npc.dialog];
     this.showingDialog = true;
@@ -442,6 +454,97 @@ export class TownScene implements Scene {
 
     // Refresh craft menu
     this.openCraftMenu(game, npc);
+  }
+
+  private getDisassembleResult(eq: EquipmentDef): { materialId: string; count: number }[] {
+    // Check if there's a craft recipe for this item
+    const recipe = CRAFT_RECIPES.find((r) => r.resultEquipment === eq.id);
+    if (recipe) {
+      // Return half the materials (at least 1 each)
+      return recipe.materials.map((m) => ({
+        materialId: m.materialId,
+        count: Math.max(1, Math.floor(m.count / 2)),
+      }));
+    }
+    // Artifacts and other items: return 1 iron_ore
+    return [{ materialId: "iron_ore", count: 1 }];
+  }
+
+  private openSellMenu(game: Game): void {
+    this.showingDialog = true;
+    const overlay = document.getElementById("overlay")!;
+    overlay.classList.remove("hidden");
+
+    const p = game.player;
+    const sellable = p.ownedEquipment.filter(
+      (eq) => eq.id !== p.weapon?.id && eq.id !== p.armor?.id && eq.id !== p.accessory?.id,
+    );
+
+    let html = '<div class="tutorial-dialog"><p>商人の店 - 装備解体</p>';
+    html += '<p style="font-size:11px;color:#aaa;margin:4px 0">不要な装備を素材に戻せます</p>';
+
+    if (sellable.length === 0) {
+      html += '<p style="color:#666;font-size:12px">解体できる装備がない</p>';
+    } else {
+      for (let i = 0; i < sellable.length; i++) {
+        const eq = sellable[i];
+        const result = this.getDisassembleResult(eq);
+        const resultStr = result
+          .map((r) => {
+            const mat = MATERIAL_DEFS.find((m) => m.id === r.materialId);
+            return `${mat?.name ?? r.materialId}x${r.count}`;
+          })
+          .join(", ");
+
+        html += `<button class="menu-btn" style="font-size:12px;padding:6px;margin:2px 0;text-align:left" id="sell-${i}">`;
+        html += `${eq.name} <span style="font-size:10px;color:#aaa">${eq.description}</span>`;
+        html += `<br><span style="font-size:10px;color:#44ff88">→ ${resultStr}</span>`;
+        html += "</button>";
+      }
+    }
+
+    html +=
+      '<button class="menu-btn secondary" id="sell-close" style="margin-top:8px">閉じる</button>';
+    html += "</div>";
+    overlay.innerHTML = html;
+
+    for (let i = 0; i < sellable.length; i++) {
+      const btn = document.getElementById(`sell-${i}`);
+      if (!btn) continue;
+      const eq = sellable[i];
+      btn.addEventListener("click", () => {
+        this.doDisassemble(game, eq);
+      });
+    }
+
+    document.getElementById("sell-close")!.addEventListener("click", () => {
+      this.showingDialog = false;
+      overlay.classList.add("hidden");
+      game.render();
+    });
+  }
+
+  private doDisassemble(game: Game, eq: EquipmentDef): void {
+    const result = this.getDisassembleResult(eq);
+
+    // Remove from owned equipment
+    game.player.ownedEquipment = game.player.ownedEquipment.filter((e) => e.id !== eq.id);
+
+    // Add materials
+    for (const r of result) {
+      game.player.addMaterial(r.materialId, r.count);
+    }
+
+    const resultStr = result
+      .map((r) => {
+        const mat = MATERIAL_DEFS.find((m) => m.id === r.materialId);
+        return `${mat?.name ?? r.materialId}x${r.count}`;
+      })
+      .join(", ");
+    game.addMessage(`${eq.name}を解体して${resultStr}を入手！`);
+
+    // Refresh menu
+    this.openSellMenu(game);
   }
 
   onWait(_game: Game): void {
