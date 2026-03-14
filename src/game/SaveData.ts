@@ -38,6 +38,11 @@ export interface SavedWorld {
   droppedLoots?: DroppedLoot[];
   // Random artifacts (full definitions)
   artifacts?: EquipmentDef[];
+  // Job
+  jobId?: string | null;
+  maxSkills?: number;
+  spRegenBonus?: number;
+  hungerCostMult?: number;
   // Goddess gift
   giftId?: string | null;
   // Max hunger (for gift that increases it)

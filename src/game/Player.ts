@@ -10,6 +10,94 @@ import {
   COLOR_PLAYER,
 } from "../constants";
 
+export interface JobDef {
+  id: string;
+  name: string;
+  description: string;
+  attackBonus: number;
+  defenseBonus: number;
+  hpBonus: number;
+  spBonus: number;
+  maxSkills: number;
+  spRegenBonus: number; // extra SP regen per turn
+  hungerCostMult: number; // multiplier for hunger cost (1.0 = normal)
+  hpRegen: boolean; // passive HP regen
+  initialSkills: string[]; // skill names to start with
+}
+
+export const JOB_DEFS: JobDef[] = [
+  {
+    id: "warrior",
+    name: "戦士",
+    description: "攻撃+5 防御+3 HP+20 スキル枠2",
+    attackBonus: 5,
+    defenseBonus: 3,
+    hpBonus: 20,
+    spBonus: -20,
+    maxSkills: 2,
+    spRegenBonus: 0,
+    hungerCostMult: 1.0,
+    hpRegen: false,
+    initialSkills: [],
+  },
+  {
+    id: "mage",
+    name: "魔法使い",
+    description: "MP+40 MP回復速い 攻撃-3",
+    attackBonus: -3,
+    defenseBonus: 0,
+    hpBonus: 0,
+    spBonus: 40,
+    maxSkills: 3,
+    spRegenBonus: 2,
+    hungerCostMult: 1.0,
+    hpRegen: false,
+    initialSkills: ["ファイアボルト"],
+  },
+  {
+    id: "priest",
+    name: "僧侶",
+    description: "防御+2 HP自然回復 ヒール習得済",
+    attackBonus: 0,
+    defenseBonus: 2,
+    hpBonus: 0,
+    spBonus: 10,
+    maxSkills: 3,
+    spRegenBonus: 0,
+    hungerCostMult: 1.0,
+    hpRegen: true,
+    initialSkills: ["ヒール"],
+  },
+  {
+    id: "thief",
+    name: "盗賊",
+    description: "攻撃+2 満腹消費半減 スキル枠2",
+    attackBonus: 2,
+    defenseBonus: 0,
+    hpBonus: 0,
+    spBonus: 0,
+    maxSkills: 2,
+    spRegenBonus: 0,
+    hungerCostMult: 0.5,
+    hpRegen: false,
+    initialSkills: ["テレポート"],
+  },
+  {
+    id: "ranger",
+    name: "狩人",
+    description: "攻撃+3 遠距離攻撃習得済",
+    attackBonus: 3,
+    defenseBonus: 0,
+    hpBonus: 0,
+    spBonus: 0,
+    maxSkills: 3,
+    spRegenBonus: 0,
+    hungerCostMult: 1.0,
+    hpRegen: false,
+    initialSkills: ["ファイアボルト"],
+  },
+];
+
 export interface GiftDef {
   id: string;
   name: string;
@@ -106,6 +194,13 @@ export class Player extends Entity {
   // Inventory: consumables (name → {def, count})
   consumables: Map<string, { def: ItemDef; count: number }> = new Map();
 
+  // Job
+  jobId: string | null = null;
+  maxSkills = 3;
+  spRegenBonus = 0;
+  hungerCostMult = 1.0;
+  hungerAccum = 0;
+
   // Goddess gift
   giftId: string | null = null;
   giftResistances: Partial<Record<Element, number>> = {};
@@ -123,6 +218,21 @@ export class Player extends Entity {
     this.maxSp = PLAYER_INITIAL_SP;
     this.hunger = PLAYER_INITIAL_HUNGER;
     this.maxHunger = PLAYER_INITIAL_HUNGER;
+  }
+
+  applyJob(job: JobDef): void {
+    this.jobId = job.id;
+    this.baseAttack += job.attackBonus;
+    this.baseDefense += job.defenseBonus;
+    this.maxHp += job.hpBonus;
+    this.hp += job.hpBonus;
+    this.baseSp += job.spBonus;
+    this.sp += job.spBonus;
+    this.maxSkills = job.maxSkills;
+    this.spRegenBonus = job.spRegenBonus;
+    this.hungerCostMult = job.hungerCostMult;
+    if (job.hpRegen) this.hpRegen = true;
+    this.recalcStats();
   }
 
   recalcStats(): void {
@@ -259,7 +369,7 @@ export class Player extends Entity {
       this.game.addMessage("すでに習得済みのスキルだ");
       return "duplicate";
     }
-    if (this.skills.length >= 3) {
+    if (this.skills.length >= this.maxSkills) {
       return "full";
     }
     this.skills.push(skill);

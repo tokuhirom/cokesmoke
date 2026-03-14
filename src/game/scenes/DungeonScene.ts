@@ -5,6 +5,7 @@ import { Dungeon } from "../Dungeon";
 import { Enemy, spawnEnemies } from "../Enemy";
 import { ItemInstance, spawnItems } from "../Item";
 import { generateArtifact } from "../Equipment";
+import { JOB_DEFS } from "../Player";
 import {
   MAP_WIDTH,
   MAP_HEIGHT,
@@ -236,7 +237,12 @@ export class DungeonScene implements Scene {
 
     if (p.armorTurns > 0) p.armorTurns--;
 
-    p.hunger -= HUNGER_COST_PER_TURN;
+    // hungerCostMult < 1 means reduced hunger consumption
+    // For 0.5: only consume on even turns (tracked via accumulated fractional cost)
+    p.hungerAccum = (p.hungerAccum ?? 0) + HUNGER_COST_PER_TURN * p.hungerCostMult;
+    const hungerCost = Math.floor(p.hungerAccum);
+    p.hungerAccum -= hungerCost;
+    p.hunger -= hungerCost;
     if (p.hunger < 0) p.hunger = 0;
     if (p.hunger === 0) {
       const starveDmg = 3;
@@ -250,7 +256,7 @@ export class DungeonScene implements Scene {
       }
     }
 
-    p.sp = Math.min(p.maxSp, p.sp + SP_REGEN_PER_TURN);
+    p.sp = Math.min(p.maxSp, p.sp + SP_REGEN_PER_TURN + p.spRegenBonus);
 
     // Gift: HP regen
     if (p.hpRegen && p.hp < p.maxHp && p.hunger > 0) {
@@ -451,9 +457,11 @@ export class DungeonScene implements Scene {
     const hpBar = makeBar(p.hp, p.maxHp, "\u2588", "\u2591");
     const spBar = makeBar(p.sp, p.maxSp, "=", "-");
     const armorStr = p.armorTurns > 0 ? ' <span style="color:#44ff88">[バリア]</span>' : "";
+    const job = JOB_DEFS.find((j) => j.id === p.jobId);
+    const jobStr = job ? `${job.name} ` : "";
     const floorLabel = this.isTutorial
       ? "Tutorial"
-      : `${this.dungeonDef.name} ${this.currentFloor}F`;
+      : `${jobStr}${this.dungeonDef.name} ${this.currentFloor}F`;
 
     const weaponStr = p.weapon ? ` <span style="color:#ffaa44">${p.weapon.name}</span>` : "";
 

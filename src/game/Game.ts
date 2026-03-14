@@ -4,6 +4,7 @@ import {
   hideOverlay,
   renderTitleScreen,
   renderWorldNameInput,
+  renderJobSelection,
   renderGiftSelection,
   renderHelpScreen,
   renderEquipMenu,
@@ -13,7 +14,7 @@ import {
   renderGoddessScene,
   renderTutorialDialog,
 } from "../ui/GameOverlays";
-import { Player, GIFT_DEFS } from "./Player";
+import { Player, GIFT_DEFS, JOB_DEFS } from "./Player";
 import { Companion } from "./Companion";
 import { TutorialManager } from "./Tutorial";
 import { SKILL_DEFS, type SkillDef } from "./Skill";
@@ -196,7 +197,23 @@ export class Game {
     this.player = new Player(this);
     this.tutorial = null;
 
-    this.showGiftSelection(name, seed);
+    this.showJobSelection(name, seed);
+  }
+
+  private showJobSelection(worldName: string, seed: number): void {
+    renderJobSelection();
+
+    for (const job of JOB_DEFS) {
+      document.getElementById(`job-${job.id}`)!.addEventListener("click", () => {
+        this.player.applyJob(job);
+        // Apply initial skills
+        for (const skillName of job.initialSkills) {
+          const skill = SKILL_DEFS.find((s) => s.name === skillName);
+          if (skill) this.player.skills.push(skill);
+        }
+        this.showGiftSelection(worldName, seed);
+      });
+    }
   }
 
   private showGiftSelection(worldName: string, seed: number): void {
@@ -219,6 +236,10 @@ export class Game {
     hideOverlay();
     this.worldScene.onEnter(this);
 
+    const job = JOB_DEFS.find((j) => j.id === this.player.jobId);
+    if (job) {
+      this.addMessage(`職業「${job.name}」として転生した！`);
+    }
     const gift = GIFT_DEFS.find((g) => g.id === this.player.giftId);
     if (gift) {
       this.addMessage(`女神の贈り物「${gift.name}」を授かった！`);
@@ -243,6 +264,14 @@ export class Game {
     this.player.hunger = saved.playerHunger;
     this.player.baseAttack = saved.playerBaseAttack;
     this.player.baseDefense = saved.playerBaseDefense;
+
+    // Restore job
+    if (saved.jobId) {
+      this.player.jobId = saved.jobId;
+      this.player.maxSkills = saved.maxSkills ?? 3;
+      this.player.spRegenBonus = saved.spRegenBonus ?? 0;
+      this.player.hungerCostMult = saved.hungerCostMult ?? 1.0;
+    }
 
     // Restore gift
     if (saved.giftId) {
@@ -345,6 +374,10 @@ export class Game {
       playerBaseAttack: this.player.baseAttack,
       playerBaseDefense: this.player.baseDefense,
       playerMaxHunger: this.player.maxHunger,
+      jobId: this.player.jobId,
+      maxSkills: this.player.maxSkills,
+      spRegenBonus: this.player.spRegenBonus,
+      hungerCostMult: this.player.hungerCostMult,
       playerSkills: this.player.skills.map((s) => s.name),
       weaponId: this.player.weapon?.id ?? null,
       armorId: this.player.armor?.id ?? null,

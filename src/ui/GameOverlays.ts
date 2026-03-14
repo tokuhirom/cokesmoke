@@ -1,6 +1,6 @@
 import type { Player } from "../game/Player";
 import type { SkillDef } from "../game/Skill";
-import { GIFT_DEFS } from "../game/Player";
+import { GIFT_DEFS, JOB_DEFS } from "../game/Player";
 import { listWorlds, canCreateWorld, type SavedWorld } from "../game/SaveData";
 
 declare const __BUILD_TIME__: string;
@@ -72,6 +72,27 @@ export function renderWorldNameInput(): void {
       <button class="menu-btn secondary" id="btn-cancel-create">戻る</button>
     </div>
   `;
+}
+
+export function renderJobSelection(): void {
+  const overlay = getOverlay();
+  showOverlay();
+
+  let html = `
+    <div class="tutorial-dialog">
+      <p style="color:#aaddff">「まずは...あなたの前世での生き方を教えてください」</p>
+      <p style="font-size:11px;color:#888;margin:4px 0">職業を選んでください</p>
+  `;
+
+  for (const job of JOB_DEFS) {
+    html += `<button class="menu-btn" style="font-size:12px;padding:8px;margin:3px 0;text-align:left" id="job-${job.id}">`;
+    html += `<strong>${job.name}</strong><br>`;
+    html += `<span style="font-size:10px;color:#aaa">${job.description}</span>`;
+    html += "</button>";
+  }
+
+  html += "</div>";
+  overlay.innerHTML = html;
 }
 
 export function renderGiftSelection(): void {
