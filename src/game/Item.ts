@@ -10,6 +10,9 @@ export interface ItemDef {
   consumable?: boolean; // if true, goes to inventory instead of instant use
   effect: (game: Game) => void;
   arrowPower?: number; // damage multiplier for arrows (射撃 skill)
+  weight?: number; // spawn weight (default 10), higher = more common
+  minFloor?: number; // minimum floor to appear (default 1)
+  dungeons?: string[]; // if set, only appears in these dungeons
 }
 
 export const ITEM_DEFS: ItemDef[] = [
@@ -27,6 +30,7 @@ export const ITEM_DEFS: ItemDef[] = [
     char: "!",
     name: "魔法書",
     description: "MP上限+20",
+    weight: 3,
     effect: (game) => {
       game.player.baseSp += 20;
       game.player.sp += 20;
@@ -52,9 +56,23 @@ export const ITEM_DEFS: ItemDef[] = [
   },
   {
     char: "~",
+    name: "エーテル",
+    description: "MP+20回復",
+    consumable: true,
+    weight: 8,
+    effect: (game) => {
+      game.player.sp = Math.min(game.player.maxSp, game.player.sp + 20);
+      game.addMessage("エーテルを飲んだ！MP+20回復");
+    },
+  },
+  {
+    char: "~",
     name: "エリクサー",
     description: "MP全回復",
     consumable: true,
+    weight: 2,
+    minFloor: 3,
+    dungeons: ["forest", "fire"],
     effect: (game) => {
       game.player.sp = game.player.maxSp;
       game.addMessage("エリクサーを飲んだ！MP全回復");
@@ -74,6 +92,8 @@ export const ITEM_DEFS: ItemDef[] = [
     char: "?",
     name: "魔導書",
     description: "ランダムスキル習得",
+    weight: 2,
+    minFloor: 2,
     effect: (game) => {
       const idx = Math.floor(ROT.RNG.getUniform() * SKILL_DEFS.length);
       const skill = SKILL_DEFS[idx];
@@ -119,6 +139,23 @@ export class ItemInstance {
   }
 }
 
+function pickWeightedItem(floor: number, dungeonId?: string): ItemDef {
+  const candidates = ITEM_DEFS.filter((d) => {
+    if (d.minFloor && floor < d.minFloor) return false;
+    if (d.dungeons && dungeonId && !d.dungeons.includes(dungeonId)) return false;
+    if (d.arrowPower) return false; // arrows are crafted, not found
+    return true;
+  });
+  if (candidates.length === 0) return ITEM_DEFS[0];
+  const totalWeight = candidates.reduce((sum, d) => sum + (d.weight ?? 10), 0);
+  let roll = ROT.RNG.getUniform() * totalWeight;
+  for (const d of candidates) {
+    roll -= d.weight ?? 10;
+    if (roll <= 0) return d;
+  }
+  return candidates[candidates.length - 1];
+}
+
 function makeMaterialItem(materialId: string, materialName: string, char: string): ItemDef {
   return {
     char,
@@ -156,30 +193,27 @@ export function spawnItems(game: Game, floor: number, dungeonId?: string): ItemI
     const [x, y] = floorTiles[idx];
     floorTiles.splice(idx, 1);
 
-    // Weight torches heavily so light doesn't run out
     let def: ItemDef;
     const roll = ROT.RNG.getUniform();
     if (roll < 0.4) {
-      def = ITEM_DEFS[0]; // torch
+      def = ITEM_DEFS[0]; // food is most common
     } else if (roll < 0.7) {
-      // Regular item
-      const defIdx = Math.floor(ROT.RNG.getUniform() * ITEM_DEFS.length);
-      def = ITEM_DEFS[defIdx];
+      // Weighted item selection with floor/dungeon filtering
+      def = pickWeightedItem(floor, dungeonId);
     } else {
       // Material drop based on dungeon
       const availableMats = MATERIAL_DEFS.filter(
         (m) => !dungeonId || m.dungeons.includes(dungeonId),
       );
       if (availableMats.length > 0) {
-        // Pick based on rarity
         const mat = availableMats[Math.floor(ROT.RNG.getUniform() * availableMats.length)];
         if (ROT.RNG.getUniform() < mat.rarity) {
           def = makeMaterialItem(mat.id, mat.name, mat.char);
         } else {
-          def = ITEM_DEFS[0]; // fallback torch
+          def = ITEM_DEFS[0];
         }
       } else {
-        def = ITEM_DEFS[Math.floor(ROT.RNG.getUniform() * ITEM_DEFS.length)];
+        def = pickWeightedItem(floor, dungeonId);
       }
     }
 
