@@ -45,16 +45,9 @@ export class TouchInput {
         return;
       }
 
-      // Equipment menu
-      if (e.key === "e") {
-        this.game.showEquipMenu();
-        e.preventDefault();
-        return;
-      }
-
-      // Inventory menu
-      if (e.key === "i") {
-        this.game.showInventoryMenu();
+      // Game menu (e, i, or m)
+      if (e.key === "e" || e.key === "i" || e.key === "m") {
+        this.game.showGameMenu();
         e.preventDefault();
         return;
       }
@@ -236,23 +229,14 @@ export class TouchInput {
     });
     skillBar.appendChild(descendBtn);
 
-    const equipBtn = document.createElement("button");
-    equipBtn.className = "wait-btn";
-    equipBtn.textContent = "装備";
-    equipBtn.addEventListener("click", () => {
+    const menuBtn = document.createElement("button");
+    menuBtn.className = "wait-btn";
+    menuBtn.textContent = "メニュー";
+    menuBtn.addEventListener("click", () => {
       if (!this.game.isPlayable()) return;
-      this.game.showEquipMenu();
+      this.game.showGameMenu();
     });
-    skillBar.appendChild(equipBtn);
-
-    const invBtn = document.createElement("button");
-    invBtn.className = "wait-btn";
-    invBtn.textContent = "持物";
-    invBtn.addEventListener("click", () => {
-      if (!this.game.isPlayable()) return;
-      this.game.showInventoryMenu();
-    });
-    skillBar.appendChild(invBtn);
+    skillBar.appendChild(menuBtn);
 
     const waitBtn = document.createElement("button");
     waitBtn.className = "wait-btn";

@@ -8,6 +8,8 @@ import {
   renderGiftSelection,
   renderHelpScreen,
   renderEquipMenu,
+  renderGameMenu,
+  renderStatusScreen,
   renderInventoryMenu,
   renderSkillReplaceMenu,
   renderProloguePage,
@@ -520,8 +522,41 @@ export class Game {
     }
 
     document.getElementById("equip-close")!.addEventListener("click", () => {
+      this.showGameMenu();
+    });
+  }
+
+  showGameMenu(): void {
+    if (!this.isPlayable()) return;
+    renderGameMenu();
+
+    document.getElementById("menu-status")!.addEventListener("click", () => {
+      this.showStatusScreen();
+    });
+    document.getElementById("menu-equip")!.addEventListener("click", () => {
+      this.showEquipMenu();
+    });
+    document.getElementById("menu-inv")!.addEventListener("click", () => {
+      this.showInventoryMenu();
+    });
+    document.getElementById("menu-title")!.addEventListener("click", () => {
+      if (confirm("タイトルに戻りますか？（進行状況はセーブされます）")) {
+        this.saveCurrentWorld();
+        hideOverlay();
+        this.showTitle();
+      }
+    });
+    document.getElementById("menu-close")!.addEventListener("click", () => {
       hideOverlay();
       this.render();
+    });
+  }
+
+  showStatusScreen(): void {
+    renderStatusScreen(this.player);
+
+    document.getElementById("status-close")!.addEventListener("click", () => {
+      this.showGameMenu();
     });
   }
 
@@ -606,8 +641,7 @@ export class Game {
     }
 
     document.getElementById("inv-close")!.addEventListener("click", () => {
-      hideOverlay();
-      this.render();
+      this.showGameMenu();
     });
   }
 

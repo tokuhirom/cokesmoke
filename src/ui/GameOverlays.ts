@@ -1,6 +1,7 @@
 import type { Player } from "../game/Player";
 import type { SkillDef } from "../game/Skill";
 import { GIFT_DEFS, JOB_DEFS } from "../game/Player";
+import { MATERIAL_DEFS } from "../game/Equipment";
 import { listWorlds, canCreateWorld, type SavedWorld } from "../game/SaveData";
 
 declare const __BUILD_TIME__: string;
@@ -208,6 +209,94 @@ export function renderEquipMenu(player: Player): void {
 
   html +=
     '<button class="menu-btn secondary" id="equip-close" style="margin-top:8px">閉じる</button>';
+  html += "</div>";
+  overlay.innerHTML = html;
+}
+
+export function renderGameMenu(): void {
+  const overlay = getOverlay();
+  showOverlay();
+
+  const html = `
+    <div class="tutorial-dialog">
+      <p>メニュー</p>
+      <button class="menu-btn" id="menu-status">ステータス</button>
+      <button class="menu-btn" id="menu-equip">装備変更</button>
+      <button class="menu-btn" id="menu-inv">持ち物</button>
+      <button class="menu-btn secondary" id="menu-title">タイトルに戻る</button>
+      <button class="menu-btn secondary" id="menu-close" style="margin-top:8px">閉じる</button>
+    </div>
+  `;
+  overlay.innerHTML = html;
+}
+
+export function renderStatusScreen(player: Player): void {
+  const overlay = getOverlay();
+  showOverlay();
+
+  const p = player;
+  const jobName = JOB_DEFS.find((j) => j.id === p.jobId)?.name ?? "なし";
+  const giftName = GIFT_DEFS.find((g) => g.id === p.giftId)?.name ?? "なし";
+
+  let html = '<div class="tutorial-dialog" style="text-align:left">';
+  html += '<p style="text-align:center">ステータス</p>';
+  html += `<div style="font-size:12px;line-height:2;color:#ccc">`;
+  html += `職業: <span style="color:#ffaa44">${jobName}</span><br>`;
+  html += `ギフト: <span style="color:#aaddff">${giftName}</span><br>`;
+  html += `HP: <span style="color:#e94560">${p.hp}/${p.maxHp}</span><br>`;
+  html += `MP: <span style="color:#88ccff">${p.sp}/${p.maxSp}</span><br>`;
+  html += `ATK: ${p.attack}  DEF: ${p.defense}<br>`;
+  html += `満腹: ${p.hunger}/${p.maxHunger}<br>`;
+  html += `所持金: <span style="color:#ffdd44">${p.gold}G</span><br>`;
+
+  // Equipment
+  html += `武器: ${p.weapon ? `<span style="color:#ffaa44">${p.weapon.name}</span>` : "なし"}<br>`;
+  html += `防具: ${p.armor ? `<span style="color:#44aaff">${p.armor.name}</span>` : "なし"}<br>`;
+  html += `装飾: ${p.accessory ? `<span style="color:#aa88ff">${p.accessory.name}</span>` : "なし"}<br>`;
+
+  // Resistances
+  const resists: string[] = [];
+  for (const elem of ["fire", "ice", "poison", "lightning"] as const) {
+    const val = p.getResistance(elem);
+    if (val > 0) {
+      const names: Record<string, string> = {
+        fire: "炎",
+        ice: "氷",
+        poison: "毒",
+        lightning: "雷",
+      };
+      resists.push(`${names[elem]}${val}%`);
+    }
+  }
+  if (resists.length > 0) {
+    html += `耐性: <span style="color:#88aacc">${resists.join(" ")}</span><br>`;
+  }
+
+  // Skills
+  if (p.skills.length > 0) {
+    html += `スキル: `;
+    html += p.skills
+      .map((s) => {
+        const cost = s.spCost === "all" ? "全MP" : `${s.spCost}MP`;
+        return `${s.name}(${cost})`;
+      })
+      .join(", ");
+    html += `<br>`;
+  }
+
+  // Materials
+  if (p.materials.size > 0) {
+    const matStrs: string[] = [];
+    for (const [matId, count] of p.materials) {
+      const matDef = MATERIAL_DEFS.find((m) => m.id === matId);
+      matStrs.push(`${matDef?.name ?? matId}x${count}`);
+    }
+    html += `素材: ${matStrs.join(", ")}<br>`;
+  }
+
+  html += `</div>`;
+  html +=
+    '<button class="menu-btn secondary" id="status-close" style="margin-top:8px">閉じる</button>';
   html += "</div>";
   overlay.innerHTML = html;
 }
