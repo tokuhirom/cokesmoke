@@ -74,6 +74,11 @@ Tests are in `src/game/__tests__/` using vitest. `testHelper.ts` provides `creat
 
 `vite.config.ts` injects `__BUILD_TIME__` (JST) and `__COMMIT_HASH__` (declared in `env.d.ts`).
 
+## Workflow
+
+- **動作確認はGitHub Pagesで行う**。コミット後は必ず即座に`git push`すること。プッシュを待たない。
+- コミット前に`npx oxfmt --write src/`でフォーマット。
+
 ## Language
 
 Game text is in Japanese. All UI strings, NPC dialog, item names, and messages use Japanese.
