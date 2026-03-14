@@ -52,6 +52,13 @@ export class TouchInput {
         return;
       }
 
+      // Inventory menu
+      if (e.key === "i") {
+        this.game.showInventoryMenu();
+        e.preventDefault();
+        return;
+      }
+
       let dx = 0,
         dy = 0;
       switch (e.key) {
@@ -237,6 +244,15 @@ export class TouchInput {
       this.game.showEquipMenu();
     });
     skillBar.appendChild(equipBtn);
+
+    const invBtn = document.createElement("button");
+    invBtn.className = "wait-btn";
+    invBtn.textContent = "持物";
+    invBtn.addEventListener("click", () => {
+      if (!this.game.isPlayable()) return;
+      this.game.showInventoryMenu();
+    });
+    skillBar.appendChild(invBtn);
 
     const waitBtn = document.createElement("button");
     waitBtn.className = "wait-btn";

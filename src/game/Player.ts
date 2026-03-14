@@ -2,6 +2,7 @@ import { Entity } from "./Entity";
 import type { Game } from "./Game";
 import type { SkillDef } from "./Skill";
 import type { EquipmentDef, Element } from "./Equipment";
+import type { ItemDef } from "./Item";
 import {
   PLAYER_INITIAL_HP,
   PLAYER_INITIAL_SP,
@@ -102,6 +103,9 @@ export class Player extends Entity {
   // Inventory: materials
   materials: Map<string, number> = new Map();
 
+  // Inventory: consumables (name → {def, count})
+  consumables: Map<string, { def: ItemDef; count: number }> = new Map();
+
   // Goddess gift
   giftId: string | null = null;
   giftResistances: Partial<Record<Element, number>> = {};
@@ -189,6 +193,27 @@ export class Player extends Entity {
       this.materials.delete(materialId);
     } else {
       this.materials.set(materialId, current - count);
+    }
+    return true;
+  }
+
+  addConsumable(def: ItemDef): void {
+    const existing = this.consumables.get(def.name);
+    if (existing) {
+      existing.count++;
+    } else {
+      this.consumables.set(def.name, { def, count: 1 });
+    }
+    this.game.addMessage(`${def.name}をインベントリに入れた`);
+  }
+
+  useConsumable(name: string): boolean {
+    const entry = this.consumables.get(name);
+    if (!entry || entry.count <= 0) return false;
+    entry.def.effect(this.game);
+    entry.count--;
+    if (entry.count <= 0) {
+      this.consumables.delete(name);
     }
     return true;
   }

@@ -7,6 +7,7 @@ export interface ItemDef {
   char: string;
   name: string;
   description: string;
+  consumable?: boolean; // if true, goes to inventory instead of instant use
   effect: (game: Game) => void;
 }
 
@@ -15,6 +16,7 @@ export const ITEM_DEFS: ItemDef[] = [
     char: "\u2666",
     name: "干し肉",
     description: "満腹+50",
+    consumable: true,
     effect: (game) => {
       game.player.hunger = Math.min(game.player.maxHunger, game.player.hunger + 50);
       game.addMessage("干し肉を食べた！満腹+50");
@@ -51,6 +53,7 @@ export const ITEM_DEFS: ItemDef[] = [
     char: "~",
     name: "エリクサー",
     description: "MP全回復",
+    consumable: true,
     effect: (game) => {
       game.player.sp = game.player.maxSp;
       game.addMessage("エリクサーを飲んだ！MP全回復");
@@ -60,6 +63,7 @@ export const ITEM_DEFS: ItemDef[] = [
     char: "+",
     name: "回復薬",
     description: "HP+25",
+    consumable: true,
     effect: (game) => {
       game.player.hp = Math.min(game.player.maxHp, game.player.hp + 25);
       game.addMessage("回復薬を飲んだ！HP+25");

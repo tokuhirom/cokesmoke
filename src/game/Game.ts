@@ -7,6 +7,7 @@ import {
   renderGiftSelection,
   renderHelpScreen,
   renderEquipMenu,
+  renderInventoryMenu,
   renderProloguePage,
   renderGoddessScene,
   renderTutorialDialog,
@@ -16,6 +17,7 @@ import { Companion } from "./Companion";
 import { TutorialManager } from "./Tutorial";
 import { SKILL_DEFS } from "./Skill";
 import { EQUIPMENT_DEFS } from "./Equipment";
+import { ITEM_DEFS } from "./Item";
 import type { Scene } from "./scenes/Scene";
 import { DungeonScene, DUNGEON_DEFS } from "./scenes/DungeonScene";
 import { WorldScene } from "./scenes/WorldScene";
@@ -292,6 +294,17 @@ export class Game {
       if (skill) this.player.skills.push(skill);
     }
 
+    // Restore consumables
+    this.player.consumables.clear();
+    if (saved.consumables) {
+      for (const [name, count] of Object.entries(saved.consumables)) {
+        const def = ITEM_DEFS.find((d) => d.name === name && d.consumable);
+        if (def && count > 0) {
+          this.player.consumables.set(name, { def, count });
+        }
+      }
+    }
+
     // Restore companion & NPCs
     this.companion = saved.hasCompanion ? new Companion(this) : null;
     this.recruitedNpcs = (saved.recruitedNpcs ?? []).map(deserializeNpc);
@@ -339,6 +352,9 @@ export class Game {
       artifacts: this.player.ownedEquipment.filter((e) => e.isArtifact),
       giftId: this.player.giftId,
       materials: Object.fromEntries(this.player.materials),
+      consumables: Object.fromEntries(
+        [...this.player.consumables].map(([name, entry]) => [name, entry.count]),
+      ),
       hasCompanion: this.companion != null,
       recruitedNpcs: this.recruitedNpcs.map(serializeNpc),
       worldX: this.worldScene?.playerWorldX ?? 0,
@@ -466,6 +482,31 @@ export class Game {
     }
 
     document.getElementById("equip-close")!.addEventListener("click", () => {
+      hideOverlay();
+      this.render();
+    });
+  }
+
+  showInventoryMenu(): void {
+    if (!this.isPlayable()) return;
+    renderInventoryMenu(this.player);
+
+    let idx = 0;
+    for (const [name] of this.player.consumables) {
+      const btnId = `use-item-${idx}`;
+      document.getElementById(btnId)?.addEventListener("click", () => {
+        if (this.player.useConsumable(name)) {
+          // Using consumable costs a turn in dungeon
+          if (this.state === "dungeon" && this.dungeonScene) {
+            this.dungeonScene.endTurn(this);
+          }
+          this.showInventoryMenu();
+        }
+      });
+      idx++;
+    }
+
+    document.getElementById("inv-close")!.addEventListener("click", () => {
       hideOverlay();
       this.render();
     });

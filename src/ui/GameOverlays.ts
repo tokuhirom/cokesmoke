@@ -112,6 +112,7 @@ export function renderHelpScreen(): void {
         <tr><td>待機</td><td>D-pad中央 / タップ / .キー</td></tr>
         <tr><td>入る</td><td>> キー / 階段ボタン（街・迷宮に入る）</td></tr>
         <tr><td>スキル</td><td>1-3キー / スキルボタン</td></tr>
+        <tr><td>持ち物</td><td>iキー / 持物ボタン</td></tr>
         <tr><td>攻撃</td><td>敵の方向に移動（斜めもOK）</td></tr>
       </table>
 
@@ -185,6 +186,30 @@ export function renderEquipMenu(player: Player): void {
 
   html +=
     '<button class="menu-btn secondary" id="equip-close" style="margin-top:8px">閉じる</button>';
+  html += "</div>";
+  overlay.innerHTML = html;
+}
+
+export function renderInventoryMenu(player: Player): void {
+  const overlay = getOverlay();
+  showOverlay();
+
+  let html = '<div class="tutorial-dialog"><p>持ち物</p>';
+
+  if (player.consumables.size === 0) {
+    html += '<p style="color:#666;font-size:12px">消耗品を持っていない</p>';
+  } else {
+    let idx = 0;
+    for (const [name, entry] of player.consumables) {
+      html += `<button class="menu-btn" style="font-size:12px;padding:6px;margin:2px 0;text-align:left" id="use-item-${idx}">`;
+      html += `${name} x${entry.count} <span style="font-size:10px;color:#aaa">${entry.def.description}</span>`;
+      html += "</button>";
+      idx++;
+    }
+  }
+
+  html +=
+    '<button class="menu-btn secondary" id="inv-close" style="margin-top:8px">閉じる</button>';
   html += "</div>";
   overlay.innerHTML = html;
 }

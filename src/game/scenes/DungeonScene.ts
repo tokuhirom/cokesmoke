@@ -337,7 +337,11 @@ export class DungeonScene implements Scene {
     const item = this.items.find((i) => !i.picked && i.x === x && i.y === y);
     if (item) {
       item.picked = true;
-      item.def.effect(game);
+      if (item.def.consumable) {
+        game.player.addConsumable(item.def);
+      } else {
+        item.def.effect(game);
+      }
     }
   }
 
