@@ -141,7 +141,7 @@ export function renderHelpScreen(): void {
       <h2>ワールドマップ</h2>
       <p>ランダム生成のワールドを冒険しよう。
       <span style="color:#ffcc00">*</span>=街、
-      <span style="color:#ff6644">D</span>=迷宮入口。
+      <span style="color:#ff6644">▼</span>=迷宮入口。
       街やダンジョンの上で>キーで入れる。</p>
 
       <h2>迷宮</h2>

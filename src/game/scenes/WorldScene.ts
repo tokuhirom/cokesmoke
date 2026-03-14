@@ -623,7 +623,7 @@ export class WorldScene implements Scene {
             ch = "*";
             fg = "#ffcc00";
           } else {
-            ch = "D";
+            ch = "▼";
             fg = "#ff6644";
           }
         }
