@@ -1,4 +1,5 @@
 import type { NpcDef } from "./scenes/TownScene";
+import type { DroppedLoot } from "./scenes/WorldScene";
 
 export interface SavedWorld {
   id: string;
@@ -30,6 +31,8 @@ export interface SavedWorld {
   worldY: number;
   // Cleared dungeons
   clearedDungeons: string[];
+  // Dropped loot from deaths
+  droppedLoots?: DroppedLoot[];
 }
 
 export interface SerializedNpc {

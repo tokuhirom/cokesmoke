@@ -275,6 +275,9 @@ export class Game {
     this.worldScene.playerWorldY = saved.worldY;
     this.player.placeOnMap(saved.worldX, saved.worldY);
 
+    // Restore dropped loots
+    this.worldScene.droppedLoots = saved.droppedLoots ?? [];
+
     this.render();
   }
 
@@ -307,6 +310,7 @@ export class Game {
       worldX: this.worldScene?.playerWorldX ?? 0,
       worldY: this.worldScene?.playerWorldY ?? 0,
       clearedDungeons: [...this.clearedDungeons],
+      droppedLoots: this.worldScene?.droppedLoots ?? [],
     };
 
     saveWorld(data);
@@ -544,14 +548,72 @@ export class Game {
 
   gameOver(): void {
     this.state = "gameover";
-    this.addMessage("力尽きた...");
 
-    // Respawn at starting town with HP restored, lose materials
+    // Drop all items at current world position
+    if (this.worldScene) {
+      this.worldScene.dropLoot(this);
+    }
+
+    // Show goddess revival scene
+    this.showGoddessScene();
+  }
+
+  private showGoddessScene(): void {
+    const overlay = document.getElementById("overlay")!;
+    overlay.classList.remove("hidden");
+
+    const pages = [
+      "目の前が暗くなっていく...\n\n力尽きた...",
+      "...不思議な光に包まれる...\n\n暖かい...この光は...",
+      "「...聞こえますか、旅の者よ」\n\n「私は女神ルミナ。\n　この世界の理を司る者」",
+      "「あなたにはまだ、\n　果たすべき使命がある」\n\n「持ち物はあの場所に\n　残っています。\n　取りに戻りなさい」",
+      "「さあ、目を覚ましなさい...\n　始まりの村が\n　あなたを待っています」",
+    ];
+
+    let pageIndex = 0;
+    const renderPage = () => {
+      if (pageIndex >= pages.length) {
+        this.completeRevival();
+        return;
+      }
+      const text = pages[pageIndex].replace(/\n/g, "<br>");
+      overlay.innerHTML = `
+        <div class="prologue-text" style="color:#aaddff">
+          <p>${text}</p>
+          <div class="prologue-tap">${pageIndex < pages.length - 1 ? "タップで次へ" : "タップして目を覚ます"}</div>
+        </div>
+      `;
+      overlay.onclick = () => {
+        pageIndex++;
+        renderPage();
+      };
+    };
+    renderPage();
+  }
+
+  private completeRevival(): void {
+    this.hideOverlay();
+
+    // Restore HP/hunger
     this.player.hp = this.player.maxHp;
     this.player.sp = this.player.maxSp;
     this.player.hunger = this.player.maxHunger;
-    this.player.materials.clear();
-    this.addMessage("素材を全て失った...");
+
+    // Return to world map at spawn point
+    this.dungeonScene = null;
+    this.townScene = null;
+    this.currentScene = this.worldScene;
+    this.state = "world";
+    const startPoi = this.worldScene.pois.find((p) => p.id === "home");
+    if (startPoi) {
+      this.worldScene.playerWorldX = startPoi.x;
+      this.worldScene.playerWorldY = startPoi.y;
+    }
+    this.worldScene.onEnter(this);
+
+    this.messages = [];
+    this.addMessage("...始まりの村の近くで目が覚めた");
+    this.addMessage("落としたアイテムは死んだ場所に残っている（!マーク）");
 
     this.saveCurrentWorld();
     this.render();

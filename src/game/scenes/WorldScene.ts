@@ -2,6 +2,8 @@ import * as ROT from "rot-js";
 import type { Scene } from "./Scene";
 import type { Game } from "../Game";
 import { MAP_WIDTH, MAP_HEIGHT, COLOR_PLAYER, HUNGER_COST_PER_TURN } from "../../constants";
+import { EQUIPMENT_DEFS } from "../Equipment";
+import { DUNGEON_DEFS } from "./DungeonScene";
 
 export interface PointOfInterest {
   x: number;
@@ -9,6 +11,39 @@ export interface PointOfInterest {
   type: "town" | "dungeon";
   id: string;
   name: string;
+}
+
+interface WorldEnemyDef {
+  char: string;
+  name: string;
+  hp: number;
+  attack: number;
+  defense: number;
+  color: string;
+}
+
+const WORLD_ENEMY_DEFS: WorldEnemyDef[] = [
+  { char: "b", name: "野盗", hp: 25, attack: 8, defense: 3, color: "#cc6644" },
+  { char: "B", name: "野盗の頭", hp: 50, attack: 14, defense: 5, color: "#ee5533" },
+  { char: "w", name: "野狼", hp: 18, attack: 10, defense: 2, color: "#aaaacc" },
+];
+
+interface WorldEnemy {
+  x: number;
+  y: number;
+  def: WorldEnemyDef;
+  hp: number;
+  alive: boolean;
+  respawnTimer: number;
+}
+
+export interface DroppedLoot {
+  x: number;
+  y: number;
+  weaponId: string | null;
+  armorId: string | null;
+  accessoryId: string | null;
+  materials: Record<string, number>;
 }
 
 interface WorldTile {
@@ -34,6 +69,8 @@ export class WorldScene implements Scene {
   playerWorldX = 0;
   playerWorldY = 0;
   seed: number;
+  worldEnemies: WorldEnemy[] = [];
+  droppedLoots: DroppedLoot[] = [];
 
   constructor(seed: number) {
     this.width = 80;
@@ -44,6 +81,9 @@ export class WorldScene implements Scene {
   onEnter(game: Game): void {
     if (this.tiles.length === 0) {
       this.generate();
+    }
+    if (this.worldEnemies.length === 0) {
+      this.spawnWorldEnemies();
     }
     game.player.placeOnMap(this.playerWorldX, this.playerWorldY);
     game.player.visibleTiles.clear();
@@ -237,16 +277,42 @@ export class WorldScene implements Scene {
     if (nx < 0 || nx >= this.width || ny < 0 || ny >= this.height) return false;
     if (!this.tiles[nx][ny].walkable) return false;
 
+    // Check for enemy at destination
+    const enemy = this.getWorldEnemyAt(nx, ny);
+    if (enemy) {
+      this.fightWorldEnemy(game, enemy);
+      this.worldEnemyTurn();
+      this.consumeHunger(game);
+      return true;
+    }
+
     this.playerWorldX = nx;
     this.playerWorldY = ny;
     game.player.placeOnMap(nx, ny);
 
+    this.worldEnemyTurn();
+    this.forage(game, nx, ny);
     this.consumeHunger(game);
+
+    // Check if enemy walked into player
+    const attacker = this.getWorldEnemyAt(nx, ny);
+    if (attacker) {
+      this.enemyAttacksPlayer(game, attacker);
+    }
+
+    // Check dropped loot
+    this.pickupLoot(game, nx, ny);
 
     // Check POI
     const poi = this.pois.find((p) => p.x === nx && p.y === ny);
     if (poi) {
       game.addMessage(`${poi.name}に到着した`);
+      if (poi.type === "dungeon") {
+        const ddef = DUNGEON_DEFS.find((d) => d.id === poi.id);
+        if (ddef) {
+          game.addMessage(`${ddef.floors}階層 / ${ddef.description}`);
+        }
+      }
     }
 
     return true;
@@ -275,7 +341,14 @@ export class WorldScene implements Scene {
       p.hunger = Math.max(0, p.hunger - 1);
       game.addMessage(`休息してHP${heal}回復（満腹-1）`);
     }
+    this.worldEnemyTurn();
     this.consumeHunger(game);
+
+    // Check if enemy walked into player
+    const attacker = this.getWorldEnemyAt(this.playerWorldX, this.playerWorldY);
+    if (attacker) {
+      this.enemyAttacksPlayer(game, attacker);
+    }
   }
 
   onDescend(game: Game): boolean {
@@ -292,6 +365,228 @@ export class WorldScene implements Scene {
       return true;
     }
     return false;
+  }
+
+  dropLoot(game: Game): void {
+    const p = game.player;
+    const materials: Record<string, number> = {};
+    for (const [id, count] of p.materials) {
+      materials[id] = count;
+    }
+
+    // Only drop if there's something to drop
+    const hasStuff =
+      p.weapon != null ||
+      p.armor != null ||
+      p.accessory != null ||
+      Object.keys(materials).length > 0;
+
+    if (hasStuff) {
+      this.droppedLoots.push({
+        x: this.playerWorldX,
+        y: this.playerWorldY,
+        weaponId: p.weapon?.id ?? null,
+        armorId: p.armor?.id ?? null,
+        accessoryId: p.accessory?.id ?? null,
+        materials,
+      });
+    }
+
+    // Strip player of items
+    p.weapon = null;
+    p.armor = null;
+    p.accessory = null;
+    p.materials.clear();
+    p.recalcStats();
+  }
+
+  private pickupLoot(game: Game, x: number, y: number): void {
+    const idx = this.droppedLoots.findIndex((l) => l.x === x && l.y === y);
+    if (idx < 0) return;
+
+    const loot = this.droppedLoots[idx];
+    const p = game.player;
+
+    // Recover equipment
+    if (loot.weaponId && EQUIPMENT_DEFS[loot.weaponId]) {
+      p.weapon = EQUIPMENT_DEFS[loot.weaponId];
+      game.addMessage(`${p.weapon!.name}を回収した！`);
+    }
+    if (loot.armorId && EQUIPMENT_DEFS[loot.armorId]) {
+      p.armor = EQUIPMENT_DEFS[loot.armorId];
+      game.addMessage(`${p.armor!.name}を回収した！`);
+    }
+    if (loot.accessoryId && EQUIPMENT_DEFS[loot.accessoryId]) {
+      p.accessory = EQUIPMENT_DEFS[loot.accessoryId];
+      game.addMessage(`${p.accessory!.name}を回収した！`);
+    }
+    p.recalcStats();
+
+    // Recover materials
+    let matCount = 0;
+    for (const [matId, count] of Object.entries(loot.materials)) {
+      p.addMaterial(matId, count);
+      matCount += count;
+    }
+    if (matCount > 0) {
+      game.addMessage(`素材${matCount}個を回収した！`);
+    }
+
+    this.droppedLoots.splice(idx, 1);
+    game.addMessage("落としたアイテムを全て回収した！");
+  }
+
+  private forage(game: Game, x: number, y: number): void {
+    const tile = this.tiles[x][y];
+    if (tile.char === "T") {
+      // Forest: chance to find nuts/berries
+      if (Math.random() < 0.15) {
+        const amount = 10 + Math.floor(Math.random() * 20);
+        game.player.hunger = Math.min(game.player.maxHunger, game.player.hunger + amount);
+        game.addMessage(`樹の実を見つけた！ 満腹+${amount}`);
+      }
+    } else if (tile.char === "." && tile.fg === "#44aa44") {
+      // Grass: rare chance for wild herbs
+      if (Math.random() < 0.03) {
+        game.player.hunger = Math.min(game.player.maxHunger, game.player.hunger + 8);
+        game.addMessage("野草を見つけた！ 満腹+8");
+      }
+    }
+  }
+
+  private spawnWorldEnemies(): void {
+    const count = 12;
+    for (let i = 0; i < count; i++) {
+      const pos = this.findEnemySpawnPos();
+      if (!pos) continue;
+
+      // Pick enemy type: mostly bandits and wolves, rare boss bandit
+      const roll = Math.random();
+      let def: WorldEnemyDef;
+      if (roll < 0.45) {
+        def = WORLD_ENEMY_DEFS[0]; // 野盗
+      } else if (roll < 0.85) {
+        def = WORLD_ENEMY_DEFS[2]; // 野狼
+      } else {
+        def = WORLD_ENEMY_DEFS[1]; // 野盗の頭
+      }
+
+      this.worldEnemies.push({
+        x: pos[0],
+        y: pos[1],
+        def,
+        hp: def.hp,
+        alive: true,
+        respawnTimer: 0,
+      });
+    }
+  }
+
+  private findEnemySpawnPos(): [number, number] | null {
+    for (let attempt = 0; attempt < 50; attempt++) {
+      const x = 2 + Math.floor(Math.random() * (this.width - 4));
+      const y = 2 + Math.floor(Math.random() * (this.height - 4));
+      if (!this.tiles[x][y].walkable) continue;
+      // Not too close to POIs
+      const nearPoi = this.pois.some((p) => Math.abs(p.x - x) + Math.abs(p.y - y) < 5);
+      if (nearPoi) continue;
+      // Not on another enemy
+      if (this.worldEnemies.some((e) => e.alive && e.x === x && e.y === y)) continue;
+      return [x, y];
+    }
+    return null;
+  }
+
+  private getWorldEnemyAt(x: number, y: number): WorldEnemy | undefined {
+    return this.worldEnemies.find((e) => e.alive && e.x === x && e.y === y);
+  }
+
+  private fightWorldEnemy(game: Game, enemy: WorldEnemy): void {
+    const p = game.player;
+    // Player attacks
+    const playerDmg = Math.max(1, p.attack - enemy.def.defense);
+    enemy.hp -= playerDmg;
+    game.addMessage(`${enemy.def.name}に${playerDmg}ダメージ！`);
+
+    if (enemy.hp <= 0) {
+      enemy.alive = false;
+      enemy.respawnTimer = 30 + Math.floor(Math.random() * 20);
+      game.addMessage(`${enemy.def.name}を倒した！`);
+      return;
+    }
+
+    // Enemy counterattacks
+    this.enemyAttacksPlayer(game, enemy);
+  }
+
+  private enemyAttacksPlayer(game: Game, enemy: WorldEnemy): void {
+    const p = game.player;
+    const enemyDmg = p.takeDamage(enemy.def.attack);
+    game.addMessage(`${enemy.def.name}の攻撃！ ${enemyDmg}ダメージ`);
+    if (!p.isAlive()) {
+      game.gameOver();
+    }
+  }
+
+  private worldEnemyTurn(): void {
+    for (const enemy of this.worldEnemies) {
+      if (!enemy.alive) {
+        // Handle respawn timer
+        if (enemy.respawnTimer > 0) {
+          enemy.respawnTimer--;
+          if (enemy.respawnTimer === 0) {
+            const pos = this.findEnemySpawnPos();
+            if (pos) {
+              enemy.x = pos[0];
+              enemy.y = pos[1];
+              enemy.hp = enemy.def.hp;
+              enemy.alive = true;
+            } else {
+              enemy.respawnTimer = 10; // Try again later
+            }
+          }
+        }
+        continue;
+      }
+
+      // Chase if close to player, otherwise wander
+      const dist = Math.abs(enemy.x - this.playerWorldX) + Math.abs(enemy.y - this.playerWorldY);
+      let nx: number;
+      let ny: number;
+
+      if (dist <= 8) {
+        // Chase player
+        const dx = Math.sign(this.playerWorldX - enemy.x);
+        const dy = Math.sign(this.playerWorldY - enemy.y);
+        nx = enemy.x + dx;
+        ny = enemy.y + dy;
+      } else {
+        // Wander randomly
+        const dirs = [
+          [0, 1],
+          [0, -1],
+          [1, 0],
+          [-1, 0],
+        ];
+        const dir = dirs[Math.floor(Math.random() * dirs.length)];
+        nx = enemy.x + dir[0];
+        ny = enemy.y + dir[1];
+      }
+
+      // Validate move
+      if (
+        nx >= 0 &&
+        nx < this.width &&
+        ny >= 0 &&
+        ny < this.height &&
+        this.tiles[nx][ny].walkable &&
+        !this.pois.some((p) => p.x === nx && p.y === ny) &&
+        !this.worldEnemies.some((e) => e !== enemy && e.alive && e.x === nx && e.y === ny)
+      ) {
+        enemy.x = nx;
+        enemy.y = ny;
+      }
+    }
   }
 
   render(display: ROT.Display, game: Game): void {
@@ -333,6 +628,25 @@ export class WorldScene implements Scene {
         }
 
         display.draw(sx, sy, ch, fg, bg);
+      }
+    }
+
+    // Draw dropped loot
+    for (const loot of this.droppedLoots) {
+      const lsx = loot.x - camX;
+      const lsy = loot.y - camY;
+      if (lsx >= 0 && lsx < MAP_WIDTH && lsy >= 0 && lsy < MAP_HEIGHT) {
+        display.draw(lsx, lsy, "!", "#ff44ff", "#111118");
+      }
+    }
+
+    // Draw world enemies
+    for (const enemy of this.worldEnemies) {
+      if (!enemy.alive) continue;
+      const esx = enemy.x - camX;
+      const esy = enemy.y - camY;
+      if (esx >= 0 && esx < MAP_WIDTH && esy >= 0 && esy < MAP_HEIGHT) {
+        display.draw(esx, esy, enemy.def.char, enemy.def.color, "#111118");
       }
     }
 

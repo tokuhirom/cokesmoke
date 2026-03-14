@@ -71,19 +71,33 @@ export const SKILL_DEFS: SkillDef[] = [
   },
   {
     name: "テレポート",
-    description: "敵の注意を逸らす",
+    description: "ランダムな場所に瞬間移動",
     spCost: 10,
     execute: (game) => {
-      for (const enemy of game.enemies) {
-        if (enemy.isAlive()) {
-          const dx = Math.abs(enemy.x - game.player.x);
-          const dy = Math.abs(enemy.y - game.player.y);
-          if (dx <= 3 && dy <= 3) {
+      const scene = game.dungeonScene;
+      if (!scene) return;
+      const floorTiles = scene.dungeon.getFloorTiles().filter(([x, y]) => {
+        if (x === game.player.x && y === game.player.y) return false;
+        if (scene.getEnemyAt(x, y)) return false;
+        return true;
+      });
+      if (floorTiles.length === 0) {
+        game.addMessage("テレポート失敗...移動先がない");
+        return;
+      }
+      const [nx, ny] = floorTiles[Math.floor(Math.random() * floorTiles.length)];
+      game.player.x = nx;
+      game.player.y = ny;
+      // Nearby enemies lose track
+      for (const enemy of scene.enemies) {
+        if (enemy.isAlive() && enemy.awakened) {
+          const dist = Math.abs(enemy.x - nx) + Math.abs(enemy.y - ny);
+          if (dist > 5) {
             enemy.awakened = false;
           }
         }
       }
-      game.addMessage("姿をくらました！周囲の敵が見失った");
+      game.addMessage("テレポート！別の場所に瞬間移動した");
     },
   },
 ];

@@ -174,6 +174,15 @@ export class Dungeon {
     floor(this.stairsX, this.stairsY, ">");
   }
 
+  placeUpstairs(): void {
+    this.tiles.set(Dungeon.key(this.startX, this.startY), {
+      char: "<",
+      walkable: true,
+      transparent: true,
+      explored: false,
+    });
+  }
+
   getFloorTiles(): [number, number][] {
     const result: [number, number][] = [];
     this.tiles.forEach((tile, key) => {

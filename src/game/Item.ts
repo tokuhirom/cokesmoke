@@ -97,10 +97,10 @@ function makeMaterialItem(materialId: string, materialName: string, char: string
   return {
     char,
     name: materialName,
-    description: "素材",
+    description: "素材（職人に渡して装備を作れる）",
     effect: (game) => {
       game.player.addMaterial(materialId);
-      game.addMessage(`${materialName}を拾った！`);
+      game.addMessage(`素材「${materialName}」を入手！（職人に渡して装備を作れる）`);
     },
   };
 }

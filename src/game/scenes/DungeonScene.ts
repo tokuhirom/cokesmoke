@@ -36,7 +36,7 @@ export const DUNGEON_DEFS: DungeonDef[] = [
     floors: 5,
     enemyTypes: ["s", "g"],
     bossFloors: [5],
-    description: "初心者向け。ゴブリンとスライムが出現する。",
+    description: "初心者向け。鉄鉱石が採れる。",
   },
   {
     id: "forest",
@@ -44,7 +44,7 @@ export const DUNGEON_DEFS: DungeonDef[] = [
     floors: 7,
     enemyTypes: ["s", "g", "O"],
     bossFloors: [7],
-    description: "森の奥深くに広がる洞窟。オークも出現。",
+    description: "鉄鉱石・精霊石が採れる。オークも出現。",
   },
   {
     id: "fire",
@@ -52,7 +52,7 @@ export const DUNGEON_DEFS: DungeonDef[] = [
     floors: 8,
     enemyTypes: ["g", "O", "D"],
     bossFloors: [4, 8],
-    description: "溶岩が流れる危険な坑道。ドラゴンが棲む。",
+    description: "竜の鱗・竜の牙・ミスリル鉱が採れる。ドラゴンに注意。",
   },
   {
     id: "abyss",
@@ -60,7 +60,7 @@ export const DUNGEON_DEFS: DungeonDef[] = [
     floors: 10,
     enemyTypes: ["O", "D"],
     bossFloors: [5, 10],
-    description: "最も危険な迷宮。全ダンジョンの最深部。",
+    description: "アダマン鉱・闇の結晶が眠る最深部。",
   },
 ];
 
@@ -89,6 +89,12 @@ export class DungeonScene implements Scene {
     } else {
       this.dungeon.generate();
     }
+
+    // Place upstairs at start position for going back
+    if (!this.isTutorial) {
+      this.dungeon.placeUpstairs();
+    }
+
     game.player.placeOnMap(this.dungeon.startX, this.dungeon.startY);
     this.enemies = spawnEnemies(game, this.currentFloor, this.dungeonDef);
     this.items = spawnItems(game, this.currentFloor, this.dungeonDef.id);
@@ -168,6 +174,10 @@ export class DungeonScene implements Scene {
       this.nextFloor(game);
       return true;
     }
+    if (tile && tile.char === "<") {
+      this.prevFloor(game);
+      return true;
+    }
     return false;
   }
 
@@ -200,6 +210,13 @@ export class DungeonScene implements Scene {
     if (tile && tile.char === ">") {
       game.addMessage("階段を見つけた！ >キーで降りる");
     }
+    if (tile && tile.char === "<") {
+      if (this.currentFloor <= 1) {
+        game.addMessage("上り階段だ！ >キーで迷宮から脱出できる");
+      } else {
+        game.addMessage("上り階段だ！ >キーで上の階に戻れる");
+      }
+    }
 
     // Companion acts
     if (game.companion && game.companion.isAlive()) {
@@ -224,6 +241,21 @@ export class DungeonScene implements Scene {
 
     this.currentFloor++;
     this.generateFloor(game);
+    game.render();
+  }
+
+  prevFloor(game: Game): void {
+    if (this.currentFloor <= 1) {
+      game.addMessage("迷宮から脱出した！");
+      game.exitDungeon();
+      return;
+    }
+
+    this.currentFloor--;
+    this.generateFloor(game);
+    // Spawn player at stairs (down) position so they appear near the exit
+    game.player.placeOnMap(this.dungeon.stairsX, this.dungeon.stairsY);
+    game.addMessage(`${this.currentFloor}階に戻った`);
     game.render();
   }
 
@@ -267,7 +299,7 @@ export class DungeonScene implements Scene {
         let ch = tile.char;
 
         if (!visible) {
-          if (tile.char === ">") {
+          if (tile.char === ">" || tile.char === "<") {
             fg = "#998800";
             bg = "#0d0d1a";
           } else {
@@ -286,6 +318,7 @@ export class DungeonScene implements Scene {
               bg = "#1a2030";
               break;
             case ">":
+            case "<":
               fg = COLOR_STAIRS;
               bg = "#1a2030";
               break;
