@@ -75,7 +75,12 @@ export const ITEM_DEFS: ItemDef[] = [
     description: "ランダムスキル習得",
     effect: (game) => {
       const idx = Math.floor(ROT.RNG.getUniform() * SKILL_DEFS.length);
-      game.player.learnSkill(SKILL_DEFS[idx]);
+      const skill = SKILL_DEFS[idx];
+      const result = game.player.learnSkill(skill);
+      if (result === "full") {
+        game.addMessage(`「${skill.name}」を覚えたい！しかしスキルがいっぱい...`);
+        game.showSkillReplaceMenu(skill);
+      }
     },
   },
 ];

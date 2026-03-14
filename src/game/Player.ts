@@ -254,17 +254,22 @@ export class Player extends Entity {
     return dmg;
   }
 
-  learnSkill(skill: SkillDef): boolean {
-    if (this.skills.length >= 3) {
-      this.game.addMessage("スキルスロットがいっぱいだ！");
-      return false;
-    }
+  learnSkill(skill: SkillDef): "learned" | "duplicate" | "full" {
     if (this.skills.some((s) => s.name === skill.name)) {
       this.game.addMessage("すでに習得済みのスキルだ");
-      return false;
+      return "duplicate";
+    }
+    if (this.skills.length >= 3) {
+      return "full";
     }
     this.skills.push(skill);
     this.game.addMessage(`スキル「${skill.name}」を習得した！`);
-    return true;
+    return "learned";
+  }
+
+  forgetAndLearnSkill(forgetIndex: number, newSkill: SkillDef): void {
+    const old = this.skills[forgetIndex];
+    this.skills[forgetIndex] = newSkill;
+    this.game.addMessage(`「${old.name}」を忘れて「${newSkill.name}」を習得した！`);
   }
 }

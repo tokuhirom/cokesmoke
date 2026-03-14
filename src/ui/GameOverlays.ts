@@ -1,4 +1,5 @@
 import type { Player } from "../game/Player";
+import type { SkillDef } from "../game/Skill";
 import { GIFT_DEFS } from "../game/Player";
 import { listWorlds, canCreateWorld, type SavedWorld } from "../game/SaveData";
 
@@ -210,6 +211,29 @@ export function renderInventoryMenu(player: Player): void {
 
   html +=
     '<button class="menu-btn secondary" id="inv-close" style="margin-top:8px">閉じる</button>';
+  html += "</div>";
+  overlay.innerHTML = html;
+}
+
+export function renderSkillReplaceMenu(player: Player, newSkill: SkillDef): void {
+  const overlay = getOverlay();
+  showOverlay();
+
+  let html = '<div class="tutorial-dialog">';
+  html += `<p>「${newSkill.name}」を覚えたい！</p>`;
+  html += `<p style="font-size:11px;color:#aaa">${newSkill.description} (${typeof newSkill.spCost === "number" ? newSkill.spCost + "MP" : "全MP"})</p>`;
+  html += '<p style="font-size:11px;color:#888;margin:8px 0">忘れるスキルを選んでください</p>';
+
+  for (let i = 0; i < player.skills.length; i++) {
+    const s = player.skills[i];
+    const cost = s.spCost === "all" ? "全MP" : `${s.spCost}MP`;
+    html += `<button class="menu-btn" style="font-size:12px;padding:6px;margin:2px 0" id="forget-${i}">`;
+    html += `${s.name} <span style="font-size:10px;color:#aaa">${s.description} (${cost})</span>`;
+    html += "</button>";
+  }
+
+  html +=
+    '<button class="menu-btn secondary" id="forget-cancel" style="margin-top:8px">覚えない</button>';
   html += "</div>";
   overlay.innerHTML = html;
 }

@@ -8,6 +8,7 @@ import {
   renderHelpScreen,
   renderEquipMenu,
   renderInventoryMenu,
+  renderSkillReplaceMenu,
   renderProloguePage,
   renderGoddessScene,
   renderTutorialDialog,
@@ -15,7 +16,7 @@ import {
 import { Player, GIFT_DEFS } from "./Player";
 import { Companion } from "./Companion";
 import { TutorialManager } from "./Tutorial";
-import { SKILL_DEFS } from "./Skill";
+import { SKILL_DEFS, type SkillDef } from "./Skill";
 import { EQUIPMENT_DEFS } from "./Equipment";
 import { ITEM_DEFS } from "./Item";
 import type { Scene } from "./scenes/Scene";
@@ -482,6 +483,24 @@ export class Game {
     }
 
     document.getElementById("equip-close")!.addEventListener("click", () => {
+      hideOverlay();
+      this.render();
+    });
+  }
+
+  showSkillReplaceMenu(newSkill: SkillDef): void {
+    renderSkillReplaceMenu(this.player, newSkill);
+
+    for (let i = 0; i < this.player.skills.length; i++) {
+      document.getElementById(`forget-${i}`)?.addEventListener("click", () => {
+        this.player.forgetAndLearnSkill(i, newSkill);
+        hideOverlay();
+        this.render();
+      });
+    }
+
+    document.getElementById("forget-cancel")!.addEventListener("click", () => {
+      this.addMessage("新しいスキルを覚えなかった");
       hideOverlay();
       this.render();
     });

@@ -167,7 +167,7 @@ describe("Skills", () => {
       spCost: 10,
       execute: () => {},
     });
-    expect(result).toBe(true);
+    expect(result).toBe("learned");
     expect(player.skills.length).toBe(1);
   });
 
@@ -176,17 +176,17 @@ describe("Skills", () => {
     const skill = { name: "テスト", description: "", spCost: 10, execute: () => {} };
     player.learnSkill(skill);
     const result = player.learnSkill(skill);
-    expect(result).toBe(false);
+    expect(result).toBe("duplicate");
     expect(player.skills.length).toBe(1);
   });
 
-  it("should not learn more than 3 skills", () => {
+  it("should return full when 3 skills learned", () => {
     const { player } = createPlayer();
     player.learnSkill({ name: "A", description: "", spCost: 10, execute: () => {} });
     player.learnSkill({ name: "B", description: "", spCost: 10, execute: () => {} });
     player.learnSkill({ name: "C", description: "", spCost: 10, execute: () => {} });
     const result = player.learnSkill({ name: "D", description: "", spCost: 10, execute: () => {} });
-    expect(result).toBe(false);
+    expect(result).toBe("full");
     expect(player.skills.length).toBe(3);
   });
 });
